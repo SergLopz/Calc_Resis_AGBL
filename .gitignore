@@ -1,0 +1,65 @@
+# ==========================================
+# 1. Byte-compiled / Python Cache Files
+# ==========================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# ==========================================
+# 2. Entornos Virtuales y Gestor UV
+# ==========================================
+.venv/
+venv/
+ENV/
+env/
+.uv/
+
+# ==========================================
+# 3. Herramientas de Pruebas y Calidad (Pytest & Ruff)
+# ==========================================
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.nox/
+.tox/
+
+# ==========================================
+# 4. Distribución, Compilación y Empaquetado
+# ==========================================
+build/
+devel/
+dist/
+downloads/
+eggs/
+.eggs/
+*.egg-info/
+*.egg
+
+# ==========================================
+# 5. Archivos de Entorno de Desarrollo y IDEs
+# ==========================================
+# VS Code
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# Neovim / Vim / Obsidian
+*.swp
+*.swo
+*~
+.netrwhist
+
+# macOS / Windows OS Metadata
+.DS_Store
+Thumbs.db
+ehthumbs.db
+
+# ==========================================
+# 6. Registros y Temporales de Ejecución
+# ==========================================
+*.log
+*.tmp

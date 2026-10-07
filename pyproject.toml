@@ -1,0 +1,29 @@
+[project]
+name = "calc-resis-agbl"
+version = "0.1.0"
+description = "Calculadora visual e interactiva de circuitos resistivos"
+readme = "README.md"
+authors = [
+    { name = "Sergio Lopez", email = "salopeza@ucompensar.edu.co" }
+]
+requires-python = ">=3.14"
+dependencies = [
+    "matplotlib>=3.7.0",
+    "networkx>=3.1",
+    "numpy>=1.24.0",
+    "pyqt6>=6.5.0",
+    "sympy>=1.12",
+]
+
+[project.scripts]
+calc-resis-agbl = "calc_resis_agbl:main"
+
+[build-system]
+requires = ["uv_build>=0.12.5,<0.13.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+    "ruff>=0.16.10",
+]
