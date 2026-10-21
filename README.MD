@@ -1,6 +1,6 @@
 # Calculadora Visual e Interactiva de Circuitos Resistivos
 
-[![Python](https://img.shields.io/badge/Python-3.14%2B-blue?logo=python&logoColor=white)](https://www.python.org/)
+[![Python](https://img.shields.io/badge/Python-3.11%2B-blue?logo=python&logoColor=white)](https://www.python.org/)
 [![UI Framework](https://img.shields.io/badge/GUI-PyQt6-green?logo=qt)](https://www.qt.io/)
 [![Package Manager](https://img.shields.io/badge/package_manager-uv-purple?logo=astral)](https://astral.sh/uv/)
 [![Linter](https://img.shields.io/badge/code_style-Ruff-red?logo=ruff)](https://github.com/astral-sh/ruff)
@@ -99,7 +99,7 @@ uv sync
 ```
 3. Ejecutar la aplicación:
 ```Bash
-uv run src/circuito_app/main.py
+uv run src/calc_resis_agbl/main.py
 ```
 ---
 ## 📄 Licencia
