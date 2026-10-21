@@ -1,16 +1,9 @@
 import pytest
 from PyQt6.QtCore import QPointF
-from PyQt6.QtWidgets import QApplication
 
 from calc_resis_agbl.core.mesh_solver import MeshSolver
 from calc_resis_agbl.core.nodal_solver import NodalSolver
 from calc_resis_agbl.ui.canvas import CircuitCanvas
-
-
-@pytest.fixture(scope="module")
-def qapp():
-    app = QApplication.instance() or QApplication([])
-    yield app
 
 
 def _lazo_cerrado(canvas: CircuitCanvas) -> None:

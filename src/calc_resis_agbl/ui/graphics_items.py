@@ -11,7 +11,7 @@ from PyQt6.QtWidgets import (
 COLOR_BORDE = QColor("#FFFFFF")
 COLOR_SELECCION = QColor("#00FFCC")
 COLOR_TEXTO = QColor("#CCCCCC")
-COLOR_CABLE = QColor("#DDDDDD")
+COLOR_CABLE = QColor("#00FFCC")
 
 LARGO_TERMINAL = 20.0
 TAMANO_GRILLA = 20
@@ -167,12 +167,13 @@ class FuenteItem(BaseComponente):
 
 
 class CableItem(QGraphicsPathItem):
-    """Cable visual que une dos terminales de componentes."""
+    """Cable visual (línea recta) que une dos terminales de componentes."""
 
     def __init__(self, origen: QPointF, destino: QPointF):
         super().__init__()
-        pen = QPen(COLOR_CABLE, 2)
+        pen = QPen(COLOR_CABLE, 2.5)
         pen.setCosmetic(True)
+        pen.setCapStyle(Qt.PenCapStyle.RoundCap)
         self.setPen(pen)
         self.setZValue(-1)
         self.actualizar(origen, destino)
@@ -183,6 +184,25 @@ class CableItem(QGraphicsPathItem):
         path = QPainterPath(origen)
         path.lineTo(destino)
         self.setPath(path)
+
+
+class TerminalResaltadoItem(QGraphicsItem):
+    """Marca visual del terminal seleccionado como primer punto de un cable."""
+
+    Z = 10
+
+    def __init__(self, punto: QPointF):
+        super().__init__()
+        self.setPos(punto)
+        self.setZValue(self.Z)
+
+    def boundingRect(self) -> QRectF:
+        return QRectF(-9, -9, 18, 18)
+
+    def paint(self, painter, option, widget=None):
+        painter.setPen(QPen(COLOR_SELECCION, 2))
+        painter.setBrush(Qt.BrushStyle.NoBrush)
+        painter.drawEllipse(QPointF(0, 0), 7, 7)
 
 
 class TierraItem(QGraphicsItem):

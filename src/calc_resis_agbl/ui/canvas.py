@@ -9,6 +9,7 @@ from calc_resis_agbl.ui.graphics_items import (
     CableItem,
     FuenteItem,
     ResistenciaItem,
+    TerminalResaltadoItem,
     TierraItem,
 )
 
@@ -40,11 +41,17 @@ class CircuitCanvas(QGraphicsView):
         self.detector = DetectorNodos(TAMANO_GRILLA, RADIO_IMAN)
         self._contador = {"R": 0, "V": 0}
         self._cables: list[CableItem] = []
+        # Conexiones explícitas por cable: cada entrada es
+        # ((itemA, idxA), (itemB, idxB)). Se guardan referencias a los items,
+        # no coordenadas, para recalcular al mover/rotar/borrar.
+        self._conexiones: list[tuple[tuple[BaseComponente, int], tuple[BaseComponente, int]]] = []
         self._modo_conexion = False
         self._terminal_pendiente: tuple[BaseComponente, int] | None = None
+        self._resaltado: TerminalResaltadoItem | None = None
         self._nodo_tierra: Punto | None = None
         self._tierra_item: TierraItem | None = None
 
+        self.setMouseTracking(True)
         self.scene.selectionChanged.connect(self._on_selection_changed)
 
     # ------------------------------------------------------------------
@@ -101,8 +108,8 @@ class CircuitCanvas(QGraphicsView):
                     )
                 )
 
-        mapa = self.detector.nodos_de_componentes(bruto)
-        id_tierra = self.id_nodo_tierra()
+        mapa = self.detector.nodos_de_componentes(bruto, self._conexiones_como_ids())
+        id_tierra = self._id_nodo_de_celda_tierra(mapa)
         for comp in bruto:
             tipo, na, nb = mapa[comp.id]
             if id_tierra is not None:
@@ -115,6 +122,28 @@ class CircuitCanvas(QGraphicsView):
             else:
                 comp.nodo_positivo, comp.nodo_negativo = na, nb
         return bruto
+
+    def _id_nodo_de_celda_tierra(
+        self, mapa: dict[str, tuple[str, str, str]]
+    ) -> str | None:
+        """
+        Determina el id de nodo (según el detector) que corresponde a la celda
+        marcada como tierra. Se busca un terminal real en esa celda y se lee el
+        nodo resuelto, porque la etiqueta del grupo puede venir de otro terminal
+        conectado por cable.
+        """
+        if self._nodo_tierra is None:
+            return None
+        celda = self._nodo_tierra
+        for item in self.componentes():
+            for idx in (0, 1):
+                tp = item.terminales_escena()[idx]
+                punto = snap_a_grilla(tp.x(), tp.y(), TAMANO_GRILLA)
+                if punto.x == celda.x and punto.y == celda.y:
+                    _tipo, na, nb = mapa[item.id_comp]
+                    return na if idx == 0 else nb
+        # Sin componente en la celda: usa la etiqueta cruda por si coincide.
+        return self.id_nodo_tierra()
 
     def id_nodo_tierra(self) -> str | None:
         """Id de nodo correspondiente a la celda marcada como tierra, si existe."""
@@ -163,9 +192,12 @@ class CircuitCanvas(QGraphicsView):
         for cable in self._cables:
             self.scene.removeItem(cable)
         self._cables.clear()
+        self._conexiones.clear()
         for item in self.componentes():
             self.scene.removeItem(item)
         self._contador = {"R": 0, "V": 0}
+        self._terminal_pendiente = None
+        self._actualizar_resaltado()
         self._nodo_tierra = None
         self._redibujar_tierra()
         self.circuito_cambiado.emit()
@@ -173,6 +205,7 @@ class CircuitCanvas(QGraphicsView):
     def activar_modo_conexion(self, activo: bool) -> None:
         self._modo_conexion = activo
         self._terminal_pendiente = None
+        self._actualizar_resaltado()
         self.viewport().setCursor(
             Qt.CursorShape.CrossCursor if activo else Qt.CursorShape.ArrowCursor
         )
@@ -208,6 +241,7 @@ class CircuitCanvas(QGraphicsView):
                 item.setRotation((item.rotation() + grados) % 360)
                 rotado = True
         if rotado:
+            self._actualizar_resaltado()
             self._reconstruir_cables()
             self.circuito_cambiado.emit()
 
@@ -216,13 +250,19 @@ class CircuitCanvas(QGraphicsView):
 
     def _eliminar_seleccion(self) -> None:
         borrado = False
+        eliminados: set[BaseComponente] = set()
         for item in self.scene.selectedItems():
             if isinstance(item, BaseComponente):
+                eliminados.add(item)
                 self.scene.removeItem(item)
                 borrado = True
-        if borrado:
-            self._reconstruir_cables()
-            self.circuito_cambiado.emit()
+        if not borrado:
+            return
+        if self._terminal_pendiente is not None and self._terminal_pendiente[0] in eliminados:
+            self._terminal_pendiente = None
+            self._actualizar_resaltado()
+        self._reconstruir_cables()
+        self.circuito_cambiado.emit()
 
     def mousePressEvent(self, event):
         if event.button() == Qt.MouseButton.RightButton:
@@ -252,6 +292,7 @@ class CircuitCanvas(QGraphicsView):
     def _aplicar_iman_y_cables(self) -> None:
         """Al soltar un componente, lo imanta a un terminal cercano y redibuja cables."""
         self._imantar_componentes()
+        self._actualizar_resaltado()
         self._reconstruir_cables()
         self.circuito_cambiado.emit()
 
@@ -268,13 +309,57 @@ class CircuitCanvas(QGraphicsView):
         punto = self.mapToScene(pos_viewport.toPoint())
         terminal = self._terminal_mas_cercano(punto)
         if terminal is None:
+            # Clic en vacío: cancela la selección pendiente.
             self._terminal_pendiente = None
+            self._actualizar_resaltado()
             return
         if self._terminal_pendiente is None:
             self._terminal_pendiente = terminal
-        else:
-            self._conectar_terminales(self._terminal_pendiente, terminal)
+        elif self._terminal_pendiente[0] is terminal[0]:
+            # Clic en el mismo componente: cancela.
             self._terminal_pendiente = None
+        else:
+            self._agregar_conexion(self._terminal_pendiente, terminal)
+            self._terminal_pendiente = None
+        self._actualizar_resaltado()
+        self._reconstruir_cables()
+        self.circuito_cambiado.emit()
+
+    def _agregar_conexion(
+        self,
+        a: tuple[BaseComponente, int],
+        b: tuple[BaseComponente, int],
+    ) -> None:
+        """Registra una conexión explícita por cable (sin duplicados)."""
+        normalizada = tuple(sorted((a, b), key=lambda t: (id(t[0]), t[1])))
+        if normalizada in self._conexiones:
+            return
+        self._conexiones.append(normalizada)
+
+    def _conexiones_como_ids(self) -> list[tuple[str, str]]:
+        """Traduce las conexiones a pares de ids de terminal del detector."""
+        etiqueta = {0: "a", 1: "b"}
+        return [
+            (f"{a[0].id_comp}:{etiqueta[a[1]]}", f"{b[0].id_comp}:{etiqueta[b[1]]}")
+            for a, b in self._conexiones
+        ]
+
+    def _actualizar_resaltado(self) -> None:
+        if self._resaltado is not None:
+            self.scene.removeItem(self._resaltado)
+            self._resaltado = None
+        if self._terminal_pendiente is None:
+            return
+        item, idx = self._terminal_pendiente
+        self._resaltado = TerminalResaltadoItem(item.terminales_escena()[idx])
+        self.scene.addItem(self._resaltado)
+
+    def borrar_todos_los_cables(self) -> None:
+        """Elimina todas las conexiones explícitas y sus cables."""
+        self._conexiones.clear()
+        self._terminal_pendiente = None
+        self._actualizar_resaltado()
+        self._reconstruir_cables()
         self.circuito_cambiado.emit()
 
     def _terminal_mas_cercano(
@@ -308,36 +393,38 @@ class CircuitCanvas(QGraphicsView):
                     mejor_dist = dist
         return mejor
 
-    def _conectar_terminales(
-        self,
-        a: tuple[BaseComponente, int],
-        b: tuple[BaseComponente, int],
-    ) -> None:
-        # Fusiona dos terminales en la misma coordenada de grilla y dibuja un cable.
-        item_a, idx_a = a
-        item_b, idx_b = b
-        if item_a is item_b:
-            return
-        tp_a = item_a.terminales_escena()[idx_a]
-        tp_b = item_b.terminales_escena()[idx_b]
-        # Ajusta el componente B para que su terminal caiga sobre el de A (imán).
-        item_b.setPos(item_b.pos() + (tp_a - tp_b))
-        self._reconstruir_cables()
-
     def _reconstruir_cables(self) -> None:
-        """Redibuja los cables uniendo terminales que comparten celda de grilla."""
+        """
+        Redibuja los cables visibles:
+        1. Conexiones explícitas creadas con el modo cable (líneas rectas
+           entre los terminales actuales de cada extremo).
+        2. Terminales que comparten celda de grilla (comportamiento de imán).
+        """
         for cable in self._cables:
             self.scene.removeItem(cable)
         self._cables.clear()
 
-        # Agrupa terminales por celda de grilla.
+        # Limpia conexiones cuyos componentes ya no existen en la escena.
+        vivos = set(self.componentes())
+        self._conexiones = [
+            (a, b)
+            for a, b in self._conexiones
+            if a[0] in vivos and b[0] in vivos
+        ]
+
+        # 1. Cables explícitos.
+        for (item_a, idx_a), (item_b, idx_b) in self._conexiones:
+            tp_a = item_a.terminales_escena()[idx_a]
+            tp_b = item_b.terminales_escena()[idx_b]
+            self._agregar_cable(tp_a, tp_b)
+
+        # 2. Terminales que comparten celda de grilla.
         grupos: dict[tuple[int, int], list[QPointF]] = {}
         for item in self.componentes():
             ta, tb = item.terminales_escena()
             for tp in (ta, tb):
                 celda = snap_a_grilla(tp.x(), tp.y(), TAMANO_GRILLA)
                 grupos.setdefault((celda.x, celda.y), []).append(tp)
-        # La tierra también actúa como punto de unión.
         if self._nodo_tierra is not None:
             clave = (self._nodo_tierra.x, self._nodo_tierra.y)
             grupos.setdefault(clave, []).append(
@@ -346,16 +433,19 @@ class CircuitCanvas(QGraphicsView):
                     self._nodo_tierra.y * TAMANO_GRILLA,
                 )
             )
-
-        # En cada celda con más de un terminal, conecta al primer punto (hub).
         for puntos in grupos.values():
             if len(puntos) < 2:
                 continue
             hub = puntos[0]
             for tp in puntos[1:]:
-                cable = CableItem(hub, tp)
-                self.scene.addItem(cable)
-                self._cables.append(cable)
+                self._agregar_cable(hub, tp)
+
+    def _agregar_cable(self, origen: QPointF, destino: QPointF) -> None:
+        if QLineF(origen, destino).length() < 1.0:
+            return
+        cable = CableItem(origen, destino)
+        self.scene.addItem(cable)
+        self._cables.append(cable)
 
     def _on_selection_changed(self) -> None:
         seleccion = self.scene.selectedItems()

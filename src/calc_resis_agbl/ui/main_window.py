@@ -95,6 +95,13 @@ class MainWindow(QMainWindow):
         boton_resolver.setStyleSheet("font-weight: bold; padding: 6px;")
         boton_resolver.clicked.connect(self._resolver)
 
+        self.boton_modo_cable = QPushButton("Modo cable")
+        self.boton_modo_cable.setCheckable(True)
+        self.boton_modo_cable.toggled.connect(self.canvas.activar_modo_conexion)
+
+        boton_borrar_cables = QPushButton("Borrar cables")
+        boton_borrar_cables.clicked.connect(self.canvas.borrar_todos_los_cables)
+
         boton_limpiar = QPushButton("Limpiar todo")
         boton_limpiar.clicked.connect(self.canvas.limpiar)
 
@@ -104,6 +111,8 @@ class MainWindow(QMainWindow):
         layout.addWidget(grupo_add)
         layout.addWidget(grupo_metodo)
         layout.addWidget(boton_resolver)
+        layout.addWidget(self.boton_modo_cable)
+        layout.addWidget(boton_borrar_cables)
         layout.addWidget(boton_tierra)
         layout.addWidget(boton_limpiar)
         layout.addStretch(1)
@@ -134,7 +143,7 @@ class MainWindow(QMainWindow):
     def _texto_ayuda(self) -> str:
         return (
             "R/V: agregar · T: rotar · Supr: borrar · clic derecho: marcar tierra "
-            "(0 V) · arrastra cerca de otro terminal para conectar (imán)."
+            "(0 V) · 'Modo cable': clic en un terminal y luego en otro para unirlos."
         )
 
     def _actualizar_unidad(self):

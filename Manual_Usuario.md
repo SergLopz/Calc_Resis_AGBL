@@ -81,6 +81,24 @@ La ventana se divide en cuatro zonas:
 - Para ramas verticales, selecciona el componente y presiona **`T`** para
   **rotarlo 90°**.
 
+### Paso 2b — Conectar con "Modo cable" (unir componentes separados)
+Cuando los componentes están **separados** (como en un esquemático normal) y
+sus terminales **no coinciden** en la misma celda, usa el botón **"Modo cable"**
+para tender cables que los unan:
+
+1. Presiona el botón **"Modo cable"** (queda activo; el cursor cambia a cruz).
+   El modo es **persistente** hasta que lo desactives.
+2. Haz **clic** sobre el terminal de un componente. Se resalta con un círculo.
+3. Haz **clic** sobre el terminal de otro componente. Aparece un **cable**
+   (línea recta) que los une y ambos terminales pasan a ser **el mismo nodo**.
+4. Repite para el resto de las uniones. Clic en una zona vacía **cancela** la
+   selección pendiente.
+5. Desactiva el botón **"Modo cable"** cuando termines.
+6. El botón **"Borrar cables"** elimina todas las conexiones por cable de una vez.
+
+> También puedes **combinar** ambos mecanismos: el imán (superponer terminales)
+> y el modo cable (tender un cable entre terminales separados).
+
 ### Paso 3 — Definir la tierra (nodo de referencia)
 - Haz **clic derecho** sobre un terminal o nodo.
 - Se marca como **tierra (0 V)** y aparece un símbolo de tierra.
@@ -112,6 +130,9 @@ La ventana se divide en cuatro zonas:
 | `Supr` / `Retroceso`   | Borrar el componente seleccionado                 |
 | **Clic derecho**       | Marcar el nodo/terminal bajo el cursor como tierra |
 
+> El botón **"Modo cable"** (persistente) habilita la conexión por
+> **dos clics** en terminales; **"Borrar cables"** limpia esas conexiones.
+
 ---
 
 ## 7. Cómo se detectan los nodos
@@ -120,6 +141,8 @@ La aplicación **no** necesita que indiques los nodos manualmente:
 
 - Cada **terminal** ocupa una celda de la grilla.
 - Los terminales que comparten la **misma celda** se agrupan en un **nodo**.
+- Los terminales unidos por un **cable explícito** (Modo cable) forman también
+  un **mismo nodo**, aunque estén en celdas distintas.
 - Los nodos se **clasifican automáticamente** por su grado (número de conexiones):
   - **Grado 2** (nodo *simple*) → letra **minúscula** (a, b, c…).
   - **Grado ≥ 3** (nodo *esencial*) → letra **mayúscula** (A, B, C…).
@@ -139,6 +162,11 @@ Se resuelve el sistema **`R · I = V`**, donde:
 La **primera malla** se orienta tomando como referencia la **fuente de mayor
 magnitud** (`Vmax`).
 
+> **Resistencias en paralelo:** si dos o más resistencias comparten exactamente
+> los mismos dos nodos, el método las trata como su **equivalente** para mallar
+> y luego reparte la corriente entre ellas (comparten la misma tensión). El
+> resultado coincide con el método Nodal.
+
 ### Análisis Nodal (MNA)
 Se resuelve el sistema **`A · x = b`**, donde `x` contiene las **tensiones de
 nodo** respecto a la tierra (y las corrientes por las fuentes), y `b` el vector
@@ -152,7 +180,7 @@ de términos independientes.
 | -------------------------------------------------------------- | -------------------------------------------------------------------------------- |
 | "Incluye el nodo de referencia '0' (tierra)..."                | No marcaste tierra. Haz **clic derecho** en un nodo y vuelve a resolver.          |
 | "El circuito necesita al menos dos nodos distintos."           | El circuito está incompleto o todos los terminales caen en una sola celda.        |
-| "El grafo tiene nodos desconectados..."                        | Hay ramas aisladas. Une todas las partes con el imán de terminales.               |
+| "El grafo tiene nodos desconectados..."                        | Hay ramas aisladas. Únelas con **Modo cable** o el imán de terminales.            |
 | "No se detectaron mallas independientes..."                    | No hay ningún lazo cerrado. Cierra el circuito.                                   |
 | "Se alcanzó el límite de 20 resistencias."                     | Superaste el máximo del proyecto. Elimina elementos (selecciona + `Supr`).        |
 | "Se alcanzó el límite de 3 fuentes DC."                        | Superaste el máximo de fuentes. Elimina alguna fuente.                            |
@@ -163,9 +191,9 @@ de términos independientes.
 ## 10. Buenas prácticas para dibujar bien
 
 - Mantén los componentes **alineados a la grilla** (el imán lo hace por ti):
-  así garantizas que los terminales realmente compartan celda y se conecten.
-- Recuerda que **solo los terminales en la misma celda se unen**; un "casi
-  contacto" que no coincide en celda **no** crea un nodo.
+  si prefieres dibujar separado, usa **Modo cable** para unir los terminales.
+- Recuerda que **solo los terminales en la misma celda se unen por imán**; un
+  "casi contacto" que no coincide en celda **no** crea un nodo (usa el cable).
 - Marca la tierra en un nodo que ya forme parte del circuito.
 - Usa `T` para alternar entre orientación horizontal y vertical y cerrar lazos.
 
@@ -180,9 +208,9 @@ uv run pytest -q        # Ejecuta la batería de pruebas
 uv run ruff check src tests   # Verifica estilo y errores estáticos
 ```
 
-Las pruebas cubren: núcleo matemático (mallas ≡ nodal), detección de nodos y
-snapping, integración desde el lienzo, límites (20 R / 3 V) y validaciones de
-errores de conexión.
+Las pruebas cubren: núcleo matemático (mallas ≡ nodal, incluido el paralelo),
+detección de nodos y snapping, integración desde el lienzo, conexiones por cable,
+límites (20 R / 3 V) y validaciones de errores de conexión.
 
 ---
 

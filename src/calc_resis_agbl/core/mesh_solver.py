@@ -13,9 +13,13 @@ class MeshSolver:
     """
 
     def resolver(self, componentes: list[object]) -> dict:
+        # Las resistencias en paralelo real (mismo par de nodos) se colapsan a
+        # una equivalente para poder mallar; luego se reparte la corriente.
+        reducidos, grupos_paralelos = self._reducir_paralelos(componentes)
+
         builder = GraphBuilder()
-        builder.construir_grafo(componentes)
-        mallas = builder.extraer_mallas(componentes)
+        builder.construir_grafo(reducidos)
+        mallas = builder.extraer_mallas(reducidos)
 
         n_mallas = len(mallas)
         if n_mallas == 0:
@@ -55,7 +59,7 @@ class MeshSolver:
         for firma, mallas_idx in compartidas.items():
             if len(mallas_idx) != 2:
                 continue
-            elem = next((c for c in componentes if c.id == firma[1]), None)
+            elem = next((c for c in reducidos if c.id == firma[1]), None)
             if not isinstance(elem, Resistencia):
                 continue
             k, j = mallas_idx
@@ -74,7 +78,10 @@ class MeshSolver:
                 "El sistema de mallas es singular o está mal condicionado."
             ) from ex
 
-        resultados = self._resultados_por_componente(mallas, vector_i, componentes)
+        resultados = self._resultados_por_componente(
+            mallas, vector_i, reducidos
+        )
+        resultados = self._repartir_paralelos(resultados, grupos_paralelos)
         return {
             "metodo": "mallas",
             "matriz_r": matriz_r,
@@ -83,6 +90,87 @@ class MeshSolver:
             "mallas": mallas,
             "componentes": resultados,
         }
+
+    def _reducir_paralelos(
+        self, componentes: list[object]
+    ) -> tuple[list[object], dict[str, dict]]:
+        """
+        Colapsa grupos de resistencias en paralelo real (mismo par de nodos) en
+        una única resistencia equivalente, manteniendo el resto de componentes
+        intactos (no se muta ningún componente original).
+
+        Devuelve (componentes_reducidos, grupos_paralelos) donde cada grupo es
+        ``{"id_eq", "ramas": [(componente_original, R_original), ...]}``.
+        """
+        grupos: dict[frozenset, list[Resistencia]] = {}
+        for comp in componentes:
+            if isinstance(comp, Resistencia):
+                grupos.setdefault(frozenset((comp.nodo_a, comp.nodo_b)), []).append(comp)
+
+        reducidos: list[object] = []
+        grupos_paralelos: dict[str, dict] = {}
+        manejadas: set[int] = set()
+
+        for comp in componentes:
+            if not isinstance(comp, Resistencia):
+                reducidos.append(comp)
+                continue
+            if id(comp) in manejadas:
+                continue
+            par = frozenset((comp.nodo_a, comp.nodo_b))
+            resis = grupos.get(par, [comp])
+            if len(resis) < 2:
+                reducidos.append(comp)
+                continue
+            # Crea un equivalente nuevo (copia) sin tocar los originales.
+            r_eq = 1.0 / sum(1.0 / r.valor_ohms for r in resis)
+            equivalente = Resistencia(
+                id=f"PAR__{comp.id}",
+                valor_ohms=r_eq,
+                nodo_a=comp.nodo_a,
+                nodo_b=comp.nodo_b,
+            )
+            reducidos.append(equivalente)
+            grupos_paralelos[equivalente.id] = {
+                "id_eq": equivalente.id,
+                "ramas": [(r, r.valor_ohms) for r in resis],
+            }
+            for r in resis:
+                manejadas.add(id(r))
+
+        return reducidos, grupos_paralelos
+
+    def _repartir_paralelos(
+        self, resultados: list[dict], grupos_paralelos: dict[str, dict]
+    ) -> list[dict]:
+        """
+        Reparte la corriente del equivalente entre las resistencias originales
+        del paralelo (comparten la misma tensión) y reconstruye la lista de
+        resultados por componente original.
+        """
+        if not grupos_paralelos:
+            return resultados
+
+        nuevo: list[dict] = []
+        for r in resultados:
+            grupo = grupos_paralelos.get(r["id"])
+            if grupo is None:
+                nuevo.append(r)
+                continue
+            voltaje_eq = r["voltaje"]
+            for resis, r_original in grupo["ramas"]:
+                corriente = voltaje_eq / r_original
+                voltaje = corriente * r_original
+                nuevo.append(
+                    {
+                        "id": resis.id,
+                        "tipo": resis.tipo,
+                        "corriente": corriente,
+                        "voltaje": voltaje,
+                        "potencia": voltaje * corriente,
+                    }
+                )
+        return nuevo
 
     @staticmethod
     def _aporte_fuente(fuente: FuenteDC, rama: dict) -> float:
