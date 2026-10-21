@@ -64,3 +64,21 @@ def test_corriente_del_lazo_es_correcta(qapp):
     # V=12, R_total=1000+2000+3000=6000 -> |I| = 2 mA en todas las ramas.
     for r in mallas.values():
         assert abs(r["corriente"]) == pytest.approx(2e-3, rel=1e-6)
+
+
+def test_ley_de_tensiones_de_kirchhoff_desde_el_lienzo(qapp):
+    canvas = CircuitCanvas()
+    _lazo_cerrado(canvas)
+    comps = canvas.construir_componentes_modelo()
+    mallas = _por_id(MeshSolver().resolver(comps)["componentes"])
+
+    suma_resistencias = 0.0
+    fuente = 0.0
+    for r in mallas.values():
+        if r["tipo"] == "R":
+            suma_resistencias += abs(r["voltaje"])
+        else:
+            fuente = abs(r["voltaje"])
+
+    # La suma de caídas resistivas debe igualar el voltaje de la fuente (LVK).
+    assert suma_resistencias == pytest.approx(fuente, rel=1e-9)

@@ -50,11 +50,17 @@ El proyecto implementa el patrón **Model-View-Controller (MVC)** desacoplado me
 
 ```text
 Calc_Resis_AGBL/
+├── Manual_Usuario.md          # Guía de uso para el usuario final
 ├── docs/                      # Documentación del proyecto y teoría de circuitos
+├── mate_add/                  # Material de apoyo y plan de desarrollo
 ├── src/
 │   └── calc_resis_agbl/
-│       ├── core/              # Lógica de negocio (NetworkX, NumPy Solver)
+│       ├── main.py            # Punto de entrada (QApplication)
+│       ├── core/              # Lógica de negocio (grafos, solvers)
 │       │   ├── graph_builder.py
+│       │   ├── mesh_solver.py     # Análisis por mallas (R·I=V)
+│       │   ├── nodal_solver.py    # Análisis nodal (MNA)
+│       │   ├── netlist.py         # Snapping y detección de nodos
 │       │   └── solver.py
 │       ├── models/            # Modelos de datos (Resistencia, FuenteDC, Circuito)
 │       │   ├── componentes.py
@@ -118,7 +124,8 @@ uv run src/calc_resis_agbl/main.py
 - Elige el **método** (Mallas o Nodal) y presiona **Resolver**: se muestran las
   matrices del sistema y una tabla con corriente, tensión y potencia por elemento.
 
-> Para el detalle completo, consulte `Manual_Usuario.md` (se genera al cierre del proyecto).
+> 📘 **Guía completa:** consulta el **[Manual de Usuario](Manual_Usuario.md)** para
+> el paso a paso, atajos, lectura de matrices y solución de problemas.
 
 ---
 ## 📄 Licencia
