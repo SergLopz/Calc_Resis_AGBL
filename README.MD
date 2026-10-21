@@ -28,14 +28,17 @@ El análisis manual de circuitos eléctricos mediante las Leyes de Kirchhoff (LV
 
 1. **Un lienzo vectorial dinámico:** Permite construir esquemáticos de hasta **20 resistencias** y **3 fuentes de voltaje DC**.
 2. **Motor de teoría de grafos:** Clasifica de forma autómata los nodos simples ($d(v) = 2$, letras minúsculas) y esenciales ($d(v) \geq 3$, letras mayúsculas).
-3. **Módulo de álgebra lineal:** Determina la base de ciclos independientes tomando como pivote la fuente de mayor magnitud ($V_{\text{max}}$) y resuelve el sistema $\mathbf{R} \cdot \mathbf{I} = \mathbf{V}$ mediante descomposición numérica.
+3. **Módulo de álgebra lineal:** Determina la base de ciclos independientes tomando como pivote la fuente de mayor magnitud ($V_{\text{max}}$) y resuelve el sistema $\mathbf{R} \cdot \mathbf{I} = \mathbf{V}$ mediante descomposición numérica. Incluye además un **análisis nodal (MNA)** como método alternativo, con selector en la interfaz.
 
 ---
 
 ## ✨ Características Principales
 
-* **Lienzo Gráfico Interactivo:** Arrastre de componentes, conexiones dinámicas y atajos de teclado (`R` para resistencia, `V` para fuente).
-* **Renderización Matricial $\LaTeX$:** Visualización en tiempo real de las matrices $\mathbf{R}$, $\mathbf{I}$ y $\mathbf{V}$ generadas dinámicamente.
+* **Lienzo Gráfico Interactivo:** Arrastre de componentes con **snapping a grilla** y **conexión por imán** entre terminales; atajos de teclado (`R` resistencia, `V` fuente, `T` rotar, `Supr` borrar).
+* **Detección automática de nodos:** Los terminales que comparten celda de grilla forman un mismo nodo; se clasifican en simples ($d(v)=2$, minúsculas) y esenciales ($d(v)\geq 3$, mayúsculas).
+* **Tierra por clic derecho:** Marca cualquier nodo como referencia ($0\,\text{V}$) directamente en el lienzo.
+* **Doble método de análisis:** Mallas ($\mathbf{R}\cdot\mathbf{I}=\mathbf{V}$) y Nodal/MNA ($\mathbf{A}\cdot\mathbf{x}=\mathbf{b}$), seleccionables.
+* **Visualización matricial:** Dibuja el sistema de ecuaciones resultante del método elegido.
 * **Inspección de Componentes:** Cálculo puntual de voltaje ($V_{R_x}$), corriente ($I_{R_x}$) y potencia disipada ($P_{R_x}$) por elemento.
 * **Layout Adaptable (Responsive):** División de panales ajustable mediante `QSplitter` y tema de alto contraste para accesibilidad visual.
 
@@ -101,6 +104,22 @@ uv sync
 ```Bash
 uv run src/calc_resis_agbl/main.py
 ```
+   (o, tras `uv sync`, mediante el script instalado: `uv run calc-resis-agbl`)
+
+---
+## 🧭 Uso rápido
+
+- **R** agrega una resistencia y **V** una fuente DC en el centro del lienzo.
+- Arrastra los componentes sobre una grilla; al soltarlos cerca de otro terminal
+  se **conectan con imán** (terminales que comparten celda = mismo nodo).
+- **T** rota el componente seleccionado 90° (para ramas verticales).
+- **Suprimir / Retroceso** borra el componente seleccionado.
+- **Clic derecho** en un terminal o nodo lo marca como **tierra (0 V)**.
+- Elige el **método** (Mallas o Nodal) y presiona **Resolver**: se muestran las
+  matrices del sistema y una tabla con corriente, tensión y potencia por elemento.
+
+> Para el detalle completo, consulte `Manual_Usuario.md` (se genera al cierre del proyecto).
+
 ---
 ## 📄 Licencia
 Este proyecto se distribuye bajo la Licencia MIT. Consulta el archivo `LICENSE` para obtener más información.
