@@ -1,2 +1,3 @@
-def main() -> None:
-    print("Hello from calc-resis-agbl!")
+"""Calculadora visual e interactiva de circuitos resistivos."""
+
+__version__ = "0.1.0"

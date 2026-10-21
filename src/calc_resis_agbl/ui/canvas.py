@@ -2,12 +2,14 @@ from PyQt6.QtCore import QLineF, QPointF, Qt, pyqtSignal
 from PyQt6.QtGui import QColor, QPainter, QPen
 from PyQt6.QtWidgets import QGraphicsScene, QGraphicsView
 
-from calc_resis_agbl.core.netlist import DetectorNodos, snap_a_grilla
+from calc_resis_agbl.core.netlist import DetectorNodos, Punto, snap_a_grilla
+from calc_resis_agbl.models.componentes import NODO_REFERENCIA
 from calc_resis_agbl.ui.graphics_items import (
     BaseComponente,
     CableItem,
     FuenteItem,
     ResistenciaItem,
+    TierraItem,
 )
 
 TAMANO_GRILLA = 20
@@ -40,6 +42,8 @@ class CircuitCanvas(QGraphicsView):
         self._cables: list[CableItem] = []
         self._modo_conexion = False
         self._terminal_pendiente: tuple[BaseComponente, int] | None = None
+        self._nodo_tierra: Punto | None = None
+        self._tierra_item: TierraItem | None = None
 
         self.scene.selectionChanged.connect(self._on_selection_changed)
 
@@ -98,13 +102,50 @@ class CircuitCanvas(QGraphicsView):
                 )
 
         mapa = self.detector.nodos_de_componentes(bruto)
+        id_tierra = self.id_nodo_tierra()
         for comp in bruto:
             tipo, na, nb = mapa[comp.id]
+            if id_tierra is not None:
+                if na == id_tierra:
+                    na = NODO_REFERENCIA
+                if nb == id_tierra:
+                    nb = NODO_REFERENCIA
             if tipo == "R":
                 comp.nodo_a, comp.nodo_b = na, nb
             else:
                 comp.nodo_positivo, comp.nodo_negativo = na, nb
         return bruto
+
+    def id_nodo_tierra(self) -> str | None:
+        """Id de nodo correspondiente a la celda marcada como tierra, si existe."""
+        if self._nodo_tierra is None:
+            return None
+        return f"N({self._nodo_tierra.x},{self._nodo_tierra.y})"
+
+    def marcar_tierra_en(self, punto_escena: QPointF) -> bool:
+        """Marca la celda de grilla más cercana al punto como nodo de referencia 0."""
+        celda = snap_a_grilla(punto_escena.x(), punto_escena.y(), TAMANO_GRILLA)
+        self._nodo_tierra = celda
+        self._redibujar_tierra()
+        self.circuito_cambiado.emit()
+        return True
+
+    def limpiar_tierra(self) -> None:
+        self._nodo_tierra = None
+        self._redibujar_tierra()
+        self.circuito_cambiado.emit()
+
+    def _redibujar_tierra(self) -> None:
+        if self._tierra_item is not None:
+            self.scene.removeItem(self._tierra_item)
+            self._tierra_item = None
+        if self._nodo_tierra is None:
+            return
+        self._tierra_item = TierraItem(
+            self._nodo_tierra.x * TAMANO_GRILLA,
+            self._nodo_tierra.y * TAMANO_GRILLA,
+        )
+        self.scene.addItem(self._tierra_item)
 
     def detectar_nodos(self) -> dict:
         """
@@ -125,6 +166,8 @@ class CircuitCanvas(QGraphicsView):
         for item in self.componentes():
             self.scene.removeItem(item)
         self._contador = {"R": 0, "V": 0}
+        self._nodo_tierra = None
+        self._redibujar_tierra()
         self.circuito_cambiado.emit()
 
     def activar_modo_conexion(self, activo: bool) -> None:
@@ -182,10 +225,25 @@ class CircuitCanvas(QGraphicsView):
             self.circuito_cambiado.emit()
 
     def mousePressEvent(self, event):
+        if event.button() == Qt.MouseButton.RightButton:
+            self._procesar_clic_derecho(event.position())
+            return
         if self._modo_conexion and event.button() == Qt.MouseButton.LeftButton:
             self._procesar_clic_conexion(event.position())
             return
         super().mousePressEvent(event)
+
+    def _procesar_clic_derecho(self, pos_viewport: QPointF) -> None:
+        """Clic derecho sobre un terminal/nodo -> marcar como tierra (0 V)."""
+        punto = self.mapToScene(pos_viewport.toPoint())
+        terminal = self._terminal_mas_cercano(punto, tolerancia=24.0)
+        if terminal is not None:
+            item, idx = terminal
+            punto = item.terminales_escena()[idx]
+            self.marcar_tierra_en(punto)
+            return
+        # Sobre un nodo existente (celda con terminales) o un punto vacío.
+        self.marcar_tierra_en(punto)
 
     def mouseReleaseEvent(self, event):
         super().mouseReleaseEvent(event)
@@ -279,6 +337,15 @@ class CircuitCanvas(QGraphicsView):
             for tp in (ta, tb):
                 celda = snap_a_grilla(tp.x(), tp.y(), TAMANO_GRILLA)
                 grupos.setdefault((celda.x, celda.y), []).append(tp)
+        # La tierra también actúa como punto de unión.
+        if self._nodo_tierra is not None:
+            clave = (self._nodo_tierra.x, self._nodo_tierra.y)
+            grupos.setdefault(clave, []).append(
+                QPointF(
+                    self._nodo_tierra.x * TAMANO_GRILLA,
+                    self._nodo_tierra.y * TAMANO_GRILLA,
+                )
+            )
 
         # En cada celda con más de un terminal, conecta al primer punto (hub).
         for puntos in grupos.values():

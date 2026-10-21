@@ -183,3 +183,25 @@ class CableItem(QGraphicsPathItem):
         path = QPainterPath(origen)
         path.lineTo(destino)
         self.setPath(path)
+
+
+class TierraItem(QGraphicsItem):
+    """Símbolo de tierra: marca visualmente el nodo de referencia (0 V)."""
+
+    Z = 5
+
+    def __init__(self, x: float, y: float):
+        super().__init__()
+        self.setPos(x, y)
+        self.setZValue(self.Z)
+
+    def boundingRect(self) -> QRectF:
+        return QRectF(-16, -2, 32, 22)
+
+    def paint(self, painter, option, widget=None):
+        pen = QPen(QColor("#FBBF24"), 2)
+        painter.setPen(pen)
+        painter.drawLine(QPointF(0, 0), QPointF(0, 10))
+        painter.drawLine(QPointF(-14, 10), QPointF(14, 10))
+        painter.drawLine(QPointF(-9, 15), QPointF(9, 15))
+        painter.drawLine(QPointF(-4, 20), QPointF(4, 20))

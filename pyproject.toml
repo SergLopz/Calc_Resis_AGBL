@@ -16,7 +16,7 @@ dependencies = [
 ]
 
 [project.scripts]
-calc-resis-agbl = "calc_resis_agbl:main"
+calc-resis-agbl = "calc_resis_agbl.main:main"
 
 [build-system]
 requires = ["uv_build>=0.12.5,<0.13.0"]
