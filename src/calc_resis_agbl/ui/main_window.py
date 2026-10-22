@@ -204,9 +204,13 @@ class MainWindow(QMainWindow):
         matriz = resultado["matriz_r"]
         vector_i = resultado["vector_i"]
         vector_v = resultado["vector_v"]
-        incognitas = [f"I{k + 1}" for k in range(len(vector_i))]
+        incognitas = [f"x{k + 1}" for k in range(len(vector_i))]
         self.matrix_panel.mostrar_sistema(
-            matriz, incognitas, vector_v, "Análisis por mallas: R · I = V"
+            matriz,
+            incognitas,
+            vector_v,
+            "Análisis por mallas: R · x = V",
+            solucion=vector_i,
         )
 
     def _mostrar_matriz_nodal(self, resultado: dict) -> None:
@@ -215,7 +219,11 @@ class MainWindow(QMainWindow):
         solucion = resultado["solucion"]
         incognitas = [f"x{k + 1}" for k in range(len(solucion))]
         self.matrix_panel.mostrar_sistema(
-            matriz, incognitas, vector_b, "Análisis nodal MNA: A · x = b"
+            matriz,
+            incognitas,
+            vector_b,
+            "Análisis nodal MNA: A · x = b",
+            solucion=solucion,
         )
 
     def _mostrar_resultados(self, componentes: list[dict]) -> None:

@@ -152,11 +152,15 @@ La aplicación **no** necesita que indiques los nodos manualmente:
 
 ## 8. Cómo leer las matrices
 
+El panel inferior muestra el sistema en la forma **`M · x = b`** y, a
+continuación, la **columna solución `x`** resultante. Las incógnitas se nombran
+`x1, x2, …` en ambos métodos.
+
 ### Análisis por Mallas
-Se resuelve el sistema **`R · I = V`**, donde:
+Se resuelve el sistema **`R · x = V`**, donde:
 - `R` es la matriz de resistencias (diagonal = suma de resistencias de la malla;
   fuera de la diagonal = resistencias compartidas entre mallas).
-- `I` es el vector de corrientes de malla (incógnitas).
+- `x` es el vector de corrientes de malla (incógnitas `x1, x2, …`).
 - `V` es el vector de fuentes de voltaje aportadas a cada malla.
 
 La **primera malla** se orienta tomando como referencia la **fuente de mayor
@@ -171,6 +175,9 @@ magnitud** (`Vmax`).
 Se resuelve el sistema **`A · x = b`**, donde `x` contiene las **tensiones de
 nodo** respecto a la tierra (y las corrientes por las fuentes), y `b` el vector
 de términos independientes.
+
+> La solución `x` se muestra siempre en la **misma figura**, como una columna
+> más tras el último `=`.
 
 ---
 
