@@ -11,6 +11,7 @@ from PyQt6.QtWidgets import (
     QSplitter,
     QTableWidget,
     QTableWidgetItem,
+    QTextBrowser,
     QVBoxLayout,
     QWidget,
 )
@@ -47,7 +48,7 @@ class MainWindow(QMainWindow):
             "Dibuja un circuito, marca tierra con clic derecho y presiona Resolver."
         )
         derecho.addWidget(self.matrix_panel)
-        derecho.setSizes([560, 260])
+        derecho.setSizes([500, 350])
 
         cuerpo = QSplitter(Qt.Orientation.Horizontal)
         cuerpo.addWidget(derecho)
@@ -121,6 +122,20 @@ class MainWindow(QMainWindow):
     def _panel_resultados(self) -> QWidget:
         panel = QWidget()
         layout = QVBoxLayout(panel)
+
+        grupo_mallas = QGroupBox("Mallas detectadas")
+        layout_mallas = QVBoxLayout(grupo_mallas)
+        self.leyenda_mallas = QTextBrowser()
+        self.leyenda_mallas.setMaximumHeight(150)
+        self.leyenda_mallas.setStyleSheet(
+            "background:#252526;color:#CCCCCC;border:1px solid #444;padding:4px;"
+        )
+        self.leyenda_mallas.setHtml(
+            "Resuelve por mallas para ver la numeración M1..Mn."
+        )
+        layout_mallas.addWidget(self.leyenda_mallas)
+        layout.addWidget(grupo_mallas)
+
         layout.addWidget(QLabel("<b>Resultados por componente</b>"))
         self.tabla = QTableWidget(0, 5)
         self.tabla.setHorizontalHeaderLabels(
@@ -165,6 +180,9 @@ class MainWindow(QMainWindow):
         self.matrix_panel.mostrar_mensaje(
             "Circuito modificado. Presiona Resolver para recalcular."
         )
+        self.leyenda_mallas.setHtml(
+            "Circuito modificado. Resuelve para actualizar las mallas."
+        )
 
     def _construir_circuito(self) -> Circuito:
         componentes = self.canvas.construir_componentes_modelo()
@@ -187,9 +205,11 @@ class MainWindow(QMainWindow):
             if self.metodo_combo.currentIndex() == 0:
                 resultado = MeshSolver().resolver(circuito.obtener_todos_los_componentes())
                 self._mostrar_matriz_mallas(resultado)
+                self._mostrar_leyenda_mallas(resultado)
             else:
                 resultado = NodalSolver().resolver(circuito.obtener_todos_los_componentes())
                 self._mostrar_matriz_nodal(resultado)
+                self._mostrar_leyenda_nodal()
         except CircuitoError as ex:
             QMessageBox.warning(self, "No se pudo resolver", str(ex))
             return
@@ -201,30 +221,71 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage(f"Resuelto con {resultado['metodo']}.")
 
     def _mostrar_matriz_mallas(self, resultado: dict) -> None:
-        matriz = resultado["matriz_r"]
-        vector_i = resultado["vector_i"]
-        vector_v = resultado["vector_v"]
-        incognitas = [f"x{k + 1}" for k in range(len(vector_i))]
+        mallas = resultado["mallas"]
+        etiquetas = [malla["id"] for malla in mallas]
+        incognitas = [f"I_{malla['id']}" for malla in mallas]
         self.matrix_panel.mostrar_sistema(
-            matriz,
+            resultado["matriz_r"],
             incognitas,
-            vector_v,
-            "Análisis por mallas: R · x = V",
-            solucion=vector_i,
+            resultado["vector_v"],
+            titulo="Análisis por mallas: R · I = V",
+            solucion=resultado["vector_i"],
+            nombres=("R (Ω)", "I (A)", "V (V)"),
+            etiquetas_filas=etiquetas,
+            etiquetas_columnas=etiquetas,
+            unidad_solucion="A",
         )
 
     def _mostrar_matriz_nodal(self, resultado: dict) -> None:
-        matriz = resultado["matriz_a"]
-        vector_b = resultado["vector_b"]
         solucion = resultado["solucion"]
         incognitas = [f"x{k + 1}" for k in range(len(solucion))]
+        filas = [f"Ec. {k + 1}" for k in range(len(solucion))]
         self.matrix_panel.mostrar_sistema(
-            matriz,
+            resultado["matriz_a"],
             incognitas,
-            vector_b,
-            "Análisis nodal MNA: A · x = b",
+            resultado["vector_b"],
+            titulo="Análisis nodal MNA: A · x = b",
             solucion=solucion,
+            nombres=("A", "x", "b"),
+            etiquetas_filas=filas,
+            etiquetas_columnas=incognitas,
+            unidad_solucion="",
         )
+
+    def _mostrar_leyenda_mallas(self, resultado: dict) -> None:
+        self.leyenda_mallas.setHtml(self._html_leyenda_mallas(resultado))
+
+    def _mostrar_leyenda_nodal(self) -> None:
+        self.leyenda_mallas.setHtml(
+            "El análisis nodal no usa mallas: las incógnitas son las tensiones "
+            "de nodo y las corrientes de las fuentes."
+        )
+
+    @staticmethod
+    def _html_leyenda_mallas(resultado: dict) -> str:
+        grupos = resultado.get("paralelos", {})
+        etiqueta_paralelo: dict[str, str] = {}
+        for grupo in grupos.values():
+            texto = " || ".join(grupo["ids"]) + f" = {grupo['valor_eq']:.6g} Ω"
+            for comp_id in grupo["ids"]:
+                etiqueta_paralelo[comp_id] = texto
+
+        lineas = []
+        for malla in resultado.get("mallas", []):
+            componentes = []
+            vistos = set()
+            for comp_id in malla.get("componentes", []):
+                texto = etiqueta_paralelo.get(comp_id, comp_id)
+                if texto not in vistos:
+                    vistos.add(texto)
+                    componentes.append(texto)
+            lineas.append(
+                f"<b>{malla['id']}</b> ({malla.get('sentido', 'indefinido')}): "
+                + ", ".join(componentes)
+            )
+        if not lineas:
+            return "No se detectaron mallas."
+        return "<br>".join(lineas)
 
     def _mostrar_resultados(self, componentes: list[dict]) -> None:
         self.tabla.setRowCount(len(componentes))
