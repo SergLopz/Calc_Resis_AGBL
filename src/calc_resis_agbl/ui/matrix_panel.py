@@ -1,32 +1,55 @@
 import numpy as np
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
-from PyQt6.QtWidgets import QVBoxLayout, QWidget
-
-SIMBOLO_PRODUCTO = "\u00b7"  # "·" real (no LaTeX)
+from PyQt6.QtWidgets import QFrame, QScrollArea, QVBoxLayout, QWidget
 
 
 class MatrixPanel(QWidget):
     """
-    Panel que dibuja sistemas lineales M·x = b (y opcionalmente la solución x)
-    de forma manual: corchetes + entradas de texto alineadas en filas y columnas.
+    Panel que dibuja sistemas lineales en formato matricial apilado:
 
-    Se evita el entorno 'matrix' de LaTeX porque el motor mathtext de matplotlib
-    no lo soporta.
+        R = [ ... ]
+        I = [ ... ]
+        V = [ ... ]
+
+    Cada matriz se dibuja manualmente (corchetes + entradas alineadas) porque
+    el motor mathtext de matplotlib no soporta el entorno 'matrix' de LaTeX.
+    El panel incluye un área de desplazamiento para matrices grandes.
     """
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self.layout = QVBoxLayout(self)
-        self.figure = Figure(figsize=(6, 2.4), facecolor="#252526")
-        self.canvas = FigureCanvas(self.figure)
-        self.layout.addWidget(self.canvas)
+        self.layout.setContentsMargins(0, 0, 0, 0)
 
+        self.scroll = QScrollArea(self)
+        self.scroll.setWidgetResizable(True)
+        self.scroll.setFrameShape(QFrame.Shape.NoFrame)
+
+        self.figure = Figure(figsize=(6, 3), facecolor="#252526")
+        self.canvas = FigureCanvas(self.figure)
+        self.scroll.setWidget(self.canvas)
+        self.layout.addWidget(self.scroll)
+
+    # ------------------------------------------------------------------
+    # API pública
+    # ------------------------------------------------------------------
     def mostrar_mensaje(self, texto: str) -> None:
         self.figure.clear()
+        self.figure.set_size_inches(6, 2)
         ax = self.figure.add_subplot(111)
         ax.axis("off")
-        ax.text(0.5, 0.5, texto, color="#CCCCCC", fontsize=11, ha="center", va="center")
+        ax.text(
+            0.5,
+            0.5,
+            texto,
+            color="#CCCCCC",
+            fontsize=11,
+            ha="center",
+            va="center",
+            wrap=True,
+        )
+        self._ajustar_tamano()
         self.canvas.draw()
 
     def mostrar_sistema(
@@ -37,137 +60,243 @@ class MatrixPanel(QWidget):
         titulo: str = "",
         decimales: int = 2,
         solucion: np.ndarray | None = None,
+        nombres: tuple[str, str, str] = ("R (Ω)", "I (A)", "V (V)"),
+        etiquetas_filas: list[str] | None = None,
+        etiquetas_columnas: list[str] | None = None,
+        unidad_solucion: str = "A",
     ) -> None:
         """
-        Dibuja el sistema [M]·[x] = [b]. Si `solucion` no es None, añade en la
-        misma figura la columna resultado [x] tras un '='.
-        """
-        self.figure.clear()
-        ax = self.figure.add_subplot(111)
-        ax.axis("off")
-        ax.set_xlim(0, 1)
-        ax.set_ylim(0, 1)
-        if titulo:
-            ax.set_title(titulo, color="#8AB4F8", fontsize=10)
+        Dibuja las tres matrices del sistema, una debajo de otra.
 
+        ``nombres`` permite adaptar los títulos (por ejemplo, A/x/b en nodal).
+        ``etiquetas_filas`` y ``etiquetas_columnas`` rotulan las mallas; si no
+        se indican, se usan M1, M2...
+        """
         matriz = np.atleast_2d(np.asarray(matriz, dtype=float))
         rhs = np.asarray(lado_derecho, dtype=float).reshape(-1, 1)
-        x_col = [[s] for s in incognitas]
         filas = matriz.shape[0]
-        fuente = self._tamano_fuente(filas)
+        if filas == 0:
+            return
 
-        # Cada bloque ocupa una fracción horizontal; se separa con símbolos.
-        bloques: list[tuple[list[list], str | None, int]] = [
-            (matriz.tolist(), None, decimales),
-        ]
-        separadores: list[str] = []
-        bloques.append((x_col, None, None))
-        separadores.append(SIMBOLO_PRODUCTO)
-        bloques.append((rhs.tolist(), None, decimales))
-        separadores.append("=")
+        etiquetas_filas = etiquetas_filas or [f"M{i + 1}" for i in range(filas)]
+        etiquetas_columnas = etiquetas_columnas or etiquetas_filas
+        vector_incognitas = [[etiqueta] for etiqueta in incognitas]
+        vector_valores = rhs.tolist()
 
-        if solucion is not None:
-            sol = np.asarray(solucion, dtype=float).reshape(-1, 1)
-            bloques.append((sol.tolist(), None, decimales))
-            separadores.append("=")
+        self.figure.clear()
+        alto = max(3.0, 0.32 * (3 * filas) + 1.3)
+        ancho = max(6.0, 0.8 * filas + 2.5)
+        self.figure.set_size_inches(ancho, alto)
 
-        self._disponer_bloques(ax, bloques, separadores, fuente)
+        rejilla = self.figure.add_gridspec(
+            4,
+            1,
+            height_ratios=[max(filas, 1), max(filas, 1), max(filas, 1), 0.9],
+            hspace=0.6,
+        )
+        self.figure.subplots_adjust(top=0.90 if titulo else 0.98, bottom=0.02)
+        if titulo:
+            self.figure.suptitle(titulo, color="#8AB4F8", fontsize=10, y=0.995)
+
+        self._dibujar_bloque(
+            self.figure.add_subplot(rejilla[0]),
+            matriz.tolist(),
+            nombres[0],
+            etiquetas_filas,
+            etiquetas_columnas,
+            decimales,
+        )
+        self._dibujar_bloque(
+            self.figure.add_subplot(rejilla[1]),
+            vector_incognitas,
+            nombres[1],
+            etiquetas_filas,
+            None,
+            None,
+        )
+        self._dibujar_bloque(
+            self.figure.add_subplot(rejilla[2]),
+            vector_valores,
+            nombres[2],
+            etiquetas_filas,
+            None,
+            decimales,
+        )
+        self._dibujar_solucion(
+            self.figure.add_subplot(rejilla[3]),
+            incognitas,
+            solucion,
+            unidad_solucion,
+        )
+        self._ajustar_tamano()
         self.canvas.draw()
 
     # ------------------------------------------------------------------
     # Dibujo
     # ------------------------------------------------------------------
     @staticmethod
-    def _tamano_fuente(filas: int) -> int:
-        if filas <= 2:
-            return 12
-        if filas <= 4:
-            return 10
-        if filas <= 6:
-            return 9
-        return 8
+    def _texto_celda(valor, decimales: int | None) -> str:
+        if isinstance(valor, str):
+            return valor
+        if decimales is None:
+            return str(valor)
+        return f"{float(valor):.{decimales}f}"
 
-    def _disponer_bloques(
-        self,
-        ax,
-        bloques: list[tuple[list[list], str | None, int | None]],
-        separadores: list[str],
-        fuente: int,
-    ) -> None:
-        """
-        Reparte el ancho disponible entre las matrices (proporcional a su número
-        de columnas) y coloca los separadores en los huecos entre bloques.
-        """
-        margen = 0.02
-        ancho_sep = 0.05
-        # Ancho proporcional: mínimo 1 columna; matrices de 1 columna pesan menos.
-        pesos = [max(1, len(b[0][0])) + 0.6 for b in bloques]
-        n_sep = len(separadores)
-        ancho_disponible = 1.0 - 2 * margen - n_sep * ancho_sep
-        total_peso = sum(pesos)
-        anchos = [ancho_disponible * p / total_peso for p in pesos]
+    @staticmethod
+    def _tamano_fuente(filas: int, max_caracteres: int) -> int:
+        if max_caracteres <= 4:
+            fuente = 12
+        elif max_caracteres <= 7:
+            fuente = 10
+        elif max_caracteres <= 12:
+            fuente = 8
+        else:
+            fuente = 6
+        if filas > 8:
+            fuente = min(fuente, 8)
+        if filas > 14:
+            fuente = min(fuente, 6)
+        return fuente
 
-        x = margen
-        for i, (valores, _, dec) in enumerate(bloques):
-            self._dibujar_matriz(ax, valores, x, anchos[i], dec, fuente)
-            x += anchos[i]
-            if i < n_sep:
-                ax.text(
-                    x + ancho_sep / 2,
-                    0.5,
-                    separadores[i],
-                    color="white",
-                    fontsize=16,
-                    ha="center",
-                    va="center",
-                )
-                x += ancho_sep
-
-    def _dibujar_matriz(
+    def _dibujar_bloque(
         self,
         ax,
         valores: list[list],
-        x_ini: float,
-        ancho: float,
+        titulo: str,
+        etiquetas_filas: list[str],
+        etiquetas_columnas: list[str] | None,
         decimales: int | None,
-        fuente: int,
     ) -> None:
-        """Dibuja una matriz con corchetes y entradas alineadas en filas/columnas."""
+        """Dibuja una matriz con corchetes, título y etiquetas de fila/columna."""
+        ax.axis("off")
+        ax.set_xlim(0, 1)
+        ax.set_ylim(0, 1)
+
         filas = len(valores)
-        columnas = max(1, max(len(f) for f in valores))
-        y_ini, y_fin = 0.12, 0.88
+        columnas = max(1, max(len(fila) for fila in valores))
+        textos = [
+            [
+                self._texto_celda(fila[col] if col < len(fila) else "", decimales)
+                for col in range(columnas)
+            ]
+            for fila in valores
+        ]
+        max_len_col = [
+            max(len(textos[fila][col]) for fila in range(filas))
+            for col in range(columnas)
+        ]
+        fuente = self._tamano_fuente(filas, max(max_len_col, default=1))
 
-        def texto(v):
-            if decimales is None:
-                return str(v)
-            return f"{float(v):.{decimales}f}"
+        margen_izq = 0.20 if etiquetas_filas else 0.04
+        margen_der = 0.03
+        margen_sup = 0.34 if etiquetas_columnas else 0.16
+        margen_inf = 0.06
+        x_ini, x_fin = margen_izq, 1 - margen_der
+        y_ini, y_fin = margen_inf, 1 - margen_sup
 
-        # Corchetes a los lados del bloque.
-        pad_bracket = min(0.02, ancho * 0.12)
-        x_izq = x_ini + pad_bracket
-        x_der = x_ini + ancho - pad_bracket
+        ax.text(
+            0.01,
+            0.99,
+            titulo,
+            ha="left",
+            va="top",
+            color="#8AB4F8",
+            fontsize=10,
+            fontweight="bold",
+        )
+
+        disponible = x_fin - x_ini
+        pesos = [max(1, max_len_col[col]) + 1.2 for col in range(columnas)]
+        total_peso = sum(pesos)
+        # Ancho proporcional al contenido: una columna no debe ocupar todo el
+        # panel, y una matriz grande se limita al ancho disponible.
+        ancho_matriz = min(disponible, max(0.12, total_peso * 0.024))
+        x_fin = x_ini + ancho_matriz
+
+        pad = min(0.02, ancho_matriz * 0.08)
+        tick = min(0.015, ancho_matriz * 0.08)
+        x_izq = x_ini + pad
+        x_der = x_fin - pad
         for x, signo in ((x_izq, 1), (x_der, -1)):
             ax.plot([x, x], [y_ini, y_fin], color="white", lw=1.5)
-            tick = min(0.015, ancho * 0.1)
             ax.plot([x, x + signo * tick], [y_ini, y_ini], color="white", lw=1.5)
             ax.plot([x, x + signo * tick], [y_fin, y_fin], color="white", lw=1.5)
 
-        # Centro horizontal disponible para las entradas.
-        x_centro_ini = x_izq + tick
-        x_centro_fin = x_der - tick
-        ancho_col = (x_centro_fin - x_centro_ini) / columnas
+        ancho_util = (x_der - tick) - (x_izq + tick)
+        anchos = [ancho_util * peso / total_peso for peso in pesos]
+        x_celda_ini = x_izq + tick
 
-        for i, fila in enumerate(valores):
-            y = y_fin - (y_fin - y_ini) * (i + 0.5) / filas
-            for j in range(columnas):
-                valor = fila[j] if j < len(fila) else ""
-                x = x_centro_ini + ancho_col * (j + 0.5)
+        for fila in range(filas):
+            y = y_fin - (y_fin - y_ini) * (fila + 0.5) / filas
+            if fila < len(etiquetas_filas):
+                ax.text(
+                    x_izq - 0.02,
+                    y,
+                    etiquetas_filas[fila],
+                    ha="right",
+                    va="center",
+                    color="#CCCCCC",
+                    fontsize=max(6, fuente - 1),
+                )
+            for col in range(columnas):
+                x = x_celda_ini + sum(anchos[:col]) + anchos[col] / 2
                 ax.text(
                     x,
                     y,
-                    texto(valor),
+                    textos[fila][col],
                     color="white",
                     fontsize=fuente,
                     ha="center",
                     va="center",
                 )
+
+        if etiquetas_columnas:
+            for col in range(min(columnas, len(etiquetas_columnas))):
+                x = x_celda_ini + sum(anchos[:col]) + anchos[col] / 2
+                ax.text(
+                    x,
+                    y_fin + 0.02,
+                    etiquetas_columnas[col],
+                    ha="center",
+                    va="bottom",
+                    color="#8AB4F8",
+                    fontsize=max(6, fuente - 1),
+                )
+
+    @staticmethod
+    def _dibujar_solucion(
+        ax,
+        incognitas: list[str],
+        solucion: np.ndarray | None,
+        unidad: str,
+    ) -> None:
+        ax.axis("off")
+        ax.set_xlim(0, 1)
+        ax.set_ylim(0, 1)
+        if solucion is None:
+            return
+
+        valores = np.asarray(solucion, dtype=float).reshape(-1)
+        partes = []
+        for etiqueta, valor in zip(incognitas, valores):
+            texto = f"{etiqueta} = {valor:.6g}"
+            if unidad:
+                texto += f" {unidad}"
+            partes.append(texto)
+        ax.text(
+            0.01,
+            0.5,
+            "Solución: " + "   ·   ".join(partes),
+            ha="left",
+            va="center",
+            color="#00FFCC",
+            fontsize=9,
+        )
+
+    def _ajustar_tamano(self) -> None:
+        """Ajusta el tamaño mínimo del lienzo para que aparezcan las barras."""
+        dpi = self.figure.dpi
+        ancho = int(self.figure.get_figwidth() * dpi)
+        alto = int(self.figure.get_figheight() * dpi)
+        self.canvas.setMinimumSize(ancho, alto)
+        self.canvas.updateGeometry()
