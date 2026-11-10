@@ -2,7 +2,7 @@ import pytest
 
 from calc_resis_agbl.core.mesh_solver import MeshSolver
 from calc_resis_agbl.core.nodal_solver import NodalSolver
-from calc_resis_agbl.models.componentes import FuenteDC, Resistencia
+from calc_resis_agbl.models.componentes import FuenteDC, Resistencia, Terminal
 
 
 def circuito_divisor():
@@ -93,3 +93,58 @@ def test_paralelo_no_muta_los_componentes_originales():
     for c in componentes:
         if c.id in valores and valores[c.id] is not None:
             assert c.valor_ohms == valores[c.id]
+
+
+def test_paralelos_conservan_terminales_y_geometria():
+    """El equivalente de paralelos conserva terminales y metadatos para la UI."""
+    posiciones = {"0": (0.0, 0.0), "n1": (0.0, 40.0), "n2": (40.0, 40.0)}
+
+    def terminal(nodo):
+        return Terminal(*posiciones[nodo])
+
+    componentes = [
+        FuenteDC(
+            "V1",
+            12.0,
+            "0",
+            "n1",
+            terminal_positivo=terminal("0"),
+            terminal_negativo=terminal("n1"),
+        ),
+        Resistencia(
+            "R1",
+            1000.0,
+            "n1",
+            "n2",
+            terminal_a=terminal("n1"),
+            terminal_b=terminal("n2"),
+        ),
+        Resistencia(
+            "R2",
+            500.0,
+            "n2",
+            "0",
+            terminal_a=terminal("n2"),
+            terminal_b=terminal("0"),
+        ),
+        Resistencia(
+            "R3",
+            500.0,
+            "n2",
+            "0",
+            terminal_a=terminal("n2"),
+            terminal_b=terminal("0"),
+        ),
+    ]
+    resultado = MeshSolver().resolver(componentes)
+
+    malla = resultado["mallas"][0]
+    assert malla["id"] == "M1"
+    assert malla["sentido"] == "horario"
+    assert malla["centroide"] is not None
+    assert set(malla["componentes"]) == {"V1", "R1", "R2", "R3"}
+
+    assert len(resultado["paralelos"]) == 1
+    grupo = next(iter(resultado["paralelos"].values()))
+    assert set(grupo["ids"]) == {"R2", "R3"}
+    assert grupo["valor_eq"] == pytest.approx(250.0)

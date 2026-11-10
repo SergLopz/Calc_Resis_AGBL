@@ -1,6 +1,6 @@
 import numpy as np
 
-from calc_resis_agbl.core.graph_builder import GraphBuilder
+from calc_resis_agbl.core.planar_meshes import extraer_mallas
 from calc_resis_agbl.models.componentes import CircuitoError, FuenteDC, Resistencia
 
 
@@ -17,9 +17,7 @@ class MeshSolver:
         # una equivalente para poder mallar; luego se reparte la corriente.
         reducidos, grupos_paralelos = self._reducir_paralelos(componentes)
 
-        builder = GraphBuilder()
-        builder.construir_grafo(reducidos)
-        mallas = builder.extraer_mallas(reducidos)
+        mallas = extraer_mallas(reducidos)
 
         n_mallas = len(mallas)
         if n_mallas == 0:
@@ -82,12 +80,15 @@ class MeshSolver:
             mallas, vector_i, reducidos
         )
         resultados = self._repartir_paralelos(resultados, grupos_paralelos)
+        for malla in mallas:
+            malla["componentes"] = self._ids_originales(malla, grupos_paralelos)
         return {
             "metodo": "mallas",
             "matriz_r": matriz_r,
             "vector_v": vector_v,
             "vector_i": vector_i,
             "mallas": mallas,
+            "paralelos": grupos_paralelos,
             "componentes": resultados,
         }
 
@@ -123,16 +124,22 @@ class MeshSolver:
                 reducidos.append(comp)
                 continue
             # Crea un equivalente nuevo (copia) sin tocar los originales.
+            # Se conservan los terminales del primer componente del grupo para
+            # que la extracción geométrica de mallas siga teniendo posiciones.
             r_eq = 1.0 / sum(1.0 / r.valor_ohms for r in resis)
             equivalente = Resistencia(
                 id=f"PAR__{comp.id}",
                 valor_ohms=r_eq,
                 nodo_a=comp.nodo_a,
                 nodo_b=comp.nodo_b,
+                terminal_a=comp.terminal_a,
+                terminal_b=comp.terminal_b,
             )
             reducidos.append(equivalente)
             grupos_paralelos[equivalente.id] = {
                 "id_eq": equivalente.id,
+                "valor_eq": r_eq,
+                "ids": [r.id for r in resis],
                 "ramas": [(r, r.valor_ohms) for r in resis],
             }
             for r in resis:
@@ -171,6 +178,21 @@ class MeshSolver:
                     }
                 )
         return nuevo
+
+    @staticmethod
+    def _ids_originales(malla: dict, grupos_paralelos: dict[str, dict]) -> list[str]:
+        """Ids de los componentes originales de una malla, expandiendo paralelos."""
+        ids: list[str] = []
+        vistos: set[str] = set()
+        for rama in malla["ramas"]:
+            elemento = rama["elemento"]
+            grupo = grupos_paralelos.get(elemento.id)
+            candidatos = grupo["ids"] if grupo is not None else [elemento.id]
+            for comp_id in candidatos:
+                if comp_id not in vistos:
+                    vistos.add(comp_id)
+                    ids.append(comp_id)
+        return ids
 
     @staticmethod
     def _aporte_fuente(fuente: FuenteDC, rama: dict) -> float:
