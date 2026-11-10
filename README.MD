@@ -6,7 +6,7 @@
 [![Linter](https://img.shields.io/badge/code_style-Ruff-red?logo=ruff)](https://github.com/astral-sh/ruff)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-Aplicación de escritorio multiplataforma para el diseño, simulación interactiva y análisis topológico de circuitos eléctricos DC. Desarrollada por el grupo **"Juiciosos" - Primer semestre UCompensar** como un entorno educativo que automatiza el análisis por mallas, clasifica nodos según su grado topológico y presenta las matrices resultantes en notación matemática rigurosa $\LaTeX$.
+Aplicación de escritorio multiplataforma para el diseño, simulación interactiva y análisis topológico de circuitos eléctricos DC. Desarrollada por el grupo **"Juiciosos" - Primer semestre UCompensar** como un entorno educativo que automatiza el análisis por mallas a partir de las ventanas geométricas del dibujo, clasifica nodos según su grado topológico y presenta los sistemas resultantes como matrices numéricas apiladas (`R =`, `I =`, `V =`).
 
 ---
 
@@ -28,7 +28,7 @@ El análisis manual de circuitos eléctricos mediante las Leyes de Kirchhoff (LV
 
 1. **Un lienzo vectorial dinámico:** Permite construir esquemáticos de hasta **20 resistencias** y **3 fuentes de voltaje DC**.
 2. **Motor de teoría de grafos:** Clasifica de forma autómata los nodos simples ($d(v) = 2$, letras minúsculas) y esenciales ($d(v) \geq 3$, letras mayúsculas).
-3. **Módulo de álgebra lineal:** Determina la base de ciclos independientes tomando como pivote la fuente de mayor magnitud ($V_{\text{max}}$) y resuelve el sistema $\mathbf{R} \cdot \mathbf{I} = \mathbf{V}$ mediante descomposición numérica. Incluye además un **análisis nodal (MNA)** como método alternativo, con selector en la interfaz.
+3. **Análisis por ventanas geométricas:** Detecta las mallas como las caras interiores del *embedding* del dibujo, las orienta en sentido horario y las numera de abajo hacia arriba y de izquierda a derecha. El sistema $\mathbf{R} \cdot \mathbf{I} = \mathbf{V}$ se resuelve numéricamente. Incluye además un **análisis nodal (MNA)** como método alternativo(en desarrollo), con selector en la interfaz.
 
 ---
 
@@ -37,8 +37,10 @@ El análisis manual de circuitos eléctricos mediante las Leyes de Kirchhoff (LV
 * **Lienzo Gráfico Interactivo:** Arrastre de componentes con **snapping a grilla** y **conexión por imán** entre terminales; atajos de teclado (`R` resistencia, `V` fuente, `T` rotar, `Supr` borrar).
 * **Detección automática de nodos:** Los terminales que comparten celda de grilla forman un mismo nodo; se clasifican en simples ($d(v)=2$, minúsculas) y esenciales ($d(v)\geq 3$, mayúsculas).
 * **Tierra por clic derecho:** Marca cualquier nodo como referencia ($0\,\text{V}$) directamente en el lienzo.
+* **Detección geométrica de mallas:** Reconoce las ventanas que el usuario ve en el lienzo, las numera `M1..Mn` (de abajo hacia arriba y de izquierda a derecha) y las orienta en sentido horario. Los puentes no se asignan a ninguna malla y las ventanas anidadas se separan correctamente.
 * **Doble método de análisis:** Mallas ($\mathbf{R}\cdot\mathbf{I}=\mathbf{V}$) y Nodal/MNA ($\mathbf{A}\cdot\mathbf{x}=\mathbf{b}$), seleccionables.
-* **Visualización matricial:** Dibuja el sistema de ecuaciones resultante del método elegido.
+* **Visualización matricial apilada:** Muestra `R =`, `I =`, `V =` (o `A =`, `x =`, `b =` en nodal) con etiquetas de fila y columna, valores numéricos y desplazamiento automático para sistemas grandes.
+* **Leyenda de mallas:** Lista cada malla con su sentido y sus componentes; los paralelos se anotan como `R2 || R3 = valor equivalente`.
 * **Inspección de Componentes:** Cálculo puntual de voltaje ($V_{R_x}$), corriente ($I_{R_x}$) y potencia disipada ($P_{R_x}$) por elemento.
 * **Layout Adaptable (Responsive):** División de panales ajustable mediante `QSplitter` y tema de alto contraste para accesibilidad visual.
 
@@ -61,17 +63,16 @@ Calc_Resis_AGBL/
 │       │   ├── mesh_solver.py     # Análisis por mallas (R·I=V)
 │       │   ├── nodal_solver.py    # Análisis nodal (MNA)
 │       │   ├── netlist.py         # Snapping y detección de nodos
+│       │   ├── planar_meshes.py   # Ventanas geométricas y numeración M1..Mn
 │       │   └── solver.py
 │       ├── models/            # Modelos de datos (Resistencia, FuenteDC, Circuito)
 │       │   ├── componentes.py
 │       │   └── circuito.py
-│       ├── ui/                # Interfaz de usuario (PyQt6 GraphicsView & Splitter)
-│       │   ├── canvas.py
-│       │   ├── graphics_items.py
-│       │   ├── main_window.py
-│       │   └── matrix_panel.py
-│       └── utils/             # Funciones auxiliares (Formateador LaTeX)
-│           └── latex_renderer.py
+│       └── ui/                # Interfaz de usuario (PyQt6 GraphicsView & Splitter)
+│           ├── canvas.py
+│           ├── graphics_items.py
+│           ├── main_window.py
+│           └── matrix_panel.py
 ├── tests/                     # Pruebas unitarias automatizadas (pytest)
 └── pyproject.toml             # Configuración unificada (UV, Ruff, Proyecto)
 ```
@@ -85,9 +86,9 @@ Calc_Resis_AGBL/
 
 * Análisis de Grafos: NetworkX
 
-* Álgebra Lineal: NumPy / SymPy
+* Álgebra Lineal: NumPy
 
-* Renderizado Matemático: Matplotlib (mathtext)
+* Renderizado de matrices: Matplotlib (texto y corchetes dibujados manualmente)
 
 * Calidad de Código y Pruebas: Ruff & Pytest
 ---
@@ -122,7 +123,8 @@ uv run src/calc_resis_agbl/main.py
 - **Suprimir / Retroceso** borra el componente seleccionado.
 - **Clic derecho** en un terminal o nodo lo marca como **tierra (0 V)**.
 - Elige el **método** (Mallas o Nodal) y presiona **Resolver**: se muestran las
-  matrices del sistema y una tabla con corriente, tensión y potencia por elemento.
+  matrices del sistema (`R =`, `I =`, `V =` o `A =`, `x =`, `b =`), la leyenda
+  de mallas `M1..Mn` y una tabla con corriente, tensión y potencia por elemento.
 
 > 📘 **Guía completa:** consulta el **[Manual de Usuario](Manual_Usuario.md)** para
 > el paso a paso, atajos, lectura de matrices y solución de problemas.

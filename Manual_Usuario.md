@@ -2,7 +2,7 @@
 
 **Proyecto:** Calculadora de Circuitos Resistivos DC
 **Equipo:** Grupo "Juiciosos" — UCompensar
-**Versión:** 1.0
+**Versión:** 1.1
 
 ---
 
@@ -58,9 +58,11 @@ La ventana se divide en cuatro zonas:
 1. **Panel de controles (izquierda):** agregar componentes, elegir método,
    resolver, quitar tierra y limpiar.
 2. **Lienzo (centro):** donde se dibuja y conecta el circuito sobre una grilla.
-3. **Panel de matrices (abajo):** muestra el sistema de ecuaciones del método elegido.
-4. **Panel de resultados (derecha):** tabla con `ID`, `Tipo`, `Corriente`,
-   `Voltaje` y `Potencia`, más un cuadro de inspección del componente seleccionado.
+3. **Panel de matrices (abajo):** muestra el sistema de ecuaciones del método
+   elegido como matrices apiladas (`R =`, `I =`, `V =` o `A =`, `x =`, `b =`).
+4. **Panel de resultados (derecha):** leyenda de **"Mallas detectadas"**, tabla
+   con `ID`, `Tipo`, `Corriente`, `Voltaje` y `Potencia`, más un cuadro de
+   inspección del componente seleccionado.
 
 ---
 
@@ -152,32 +154,62 @@ La aplicación **no** necesita que indiques los nodos manualmente:
 
 ## 8. Cómo leer las matrices
 
-El panel inferior muestra el sistema en la forma **`M · x = b`** y, a
-continuación, la **columna solución `x`** resultante. Las incógnitas se nombran
-`x1, x2, …` en ambos métodos.
+El panel inferior muestra **tres matrices apiladas** con la forma del sistema
+resuelto:
+
+```text
+R = [ ... ]      (matriz de coeficientes)
+I = [ ... ]      (vector de incógnitas)
+V = [ ... ]      (vector de términos independientes)
+```
+
+Debajo aparece la línea **`Solución:`** con el valor numérico de cada incógnita.
+Si el sistema es grande, el panel permite desplazarse vertical y horizontalmente.
 
 ### Análisis por Mallas
-Se resuelve el sistema **`R · x = V`**, donde:
-- `R` es la matriz de resistencias (diagonal = suma de resistencias de la malla;
-  fuera de la diagonal = resistencias compartidas entre mallas).
-- `x` es el vector de corrientes de malla (incógnitas `x1, x2, …`).
-- `V` es el vector de fuentes de voltaje aportadas a cada malla.
 
-La **primera malla** se orienta tomando como referencia la **fuente de mayor
-magnitud** (`Vmax`).
+Se resuelve el sistema **`R · I = V`**, donde:
+
+- **`R`** es la matriz de resistencias. La diagonal contiene la suma de las
+  resistencias de cada malla; fuera de la diagonal, la resistencia compartida
+  entre dos mallas (con signo negativo).
+- **`I`** es el vector de corrientes de malla, con incógnitas **`I_M1, I_M2, …`**.
+- **`V`** es el vector de fuentes de voltaje aportadas a cada malla.
+
+Las filas y columnas se rotulan **`M1, M2, …`**, de modo que la fila `M1`
+corresponde a la ecuación de la malla 1 y la columna `M1` a su corriente.
+
+**Numeración y sentido de las mallas:**
+
+- Se detectan las **ventanas geométricas** que se ven en el dibujo (las caras
+  interiores del circuito), no una base arbitraria de ciclos.
+- **`M1`** es la ventana ubicada más abajo y, dentro de una misma fila, la más
+  **a la izquierda**; luego se numera de izquierda a derecha y de abajo hacia
+  arriba.
+- Todas las mallas se recorren en **sentido horario**.
+- Los **puentes** (ramas que no forman parte de ninguna ventana) no se asignan
+  a ninguna malla. Las ventanas **anidadas** se detectan por separado.
+- La leyenda **"Mallas detectadas"** del panel derecho lista cada malla con su
+  sentido y sus componentes, por ejemplo:
+  `M1 (horario): V1, R1, R2, R3`.
 
 > **Resistencias en paralelo:** si dos o más resistencias comparten exactamente
 > los mismos dos nodos, el método las trata como su **equivalente** para mallar
-> y luego reparte la corriente entre ellas (comparten la misma tensión). El
-> resultado coincide con el método Nodal.
+> y luego reparte la corriente entre ellas (comparten la misma tensión). En la
+> matriz aparece el valor equivalente y la leyenda lo anota como
+> `R2 || R3 = 250 Ω`. El resultado coincide con el método Nodal.
 
 ### Análisis Nodal (MNA)
-Se resuelve el sistema **`A · x = b`**, donde `x` contiene las **tensiones de
-nodo** respecto a la tierra (y las corrientes por las fuentes), y `b` el vector
-de términos independientes.
 
-> La solución `x` se muestra siempre en la **misma figura**, como una columna
-> más tras el último `=`.
+Se resuelve el sistema **`A · x = b`**, donde:
+
+- **`A`** es la matriz de conductancias y conexiones de la red.
+- **`x`** contiene las **tensiones de nodo** respecto a la tierra (y las
+  corrientes por las fuentes).
+- **`b`** es el vector de términos independientes.
+
+Las filas se rotulan **`Ec. 1, Ec. 2, …`** y las columnas **`x1, x2, …`**. La
+leyenda indica que el método nodal no utiliza mallas.
 
 ---
 
@@ -216,8 +248,10 @@ uv run ruff check src tests   # Verifica estilo y errores estáticos
 ```
 
 Las pruebas cubren: núcleo matemático (mallas ≡ nodal, incluido el paralelo),
-detección de nodos y snapping, integración desde el lienzo, conexiones por cable,
-límites (20 R / 3 V) y validaciones de errores de conexión.
+extracción geométrica de ventanas (numeración, sentido horario, puentes,
+anidados y fallback), formato de las matrices, leyenda de mallas, detección de
+nodos y snapping, integración desde el lienzo, conexiones por cable, límites
+(20 R / 3 V) y validaciones de errores de conexión.
 
 ---
 
