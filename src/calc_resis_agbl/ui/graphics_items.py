@@ -149,21 +149,39 @@ class FuenteItem(BaseComponente):
 
     def paint(self, painter, option, widget=None):
         painter.setPen(self._pen())
-        painter.drawLine(QPointF(-self.MEDIO, 0), QPointF(-self.RADIO, 0))
-        painter.drawEllipse(QPointF(0, 0), self.RADIO, self.RADIO)
-        painter.drawLine(QPointF(self.RADIO, 0), QPointF(self.MEDIO, 0))
-        painter.drawLine(QPointF(-6, -self.RADIO + 5), QPointF(-6, self.RADIO - 5))
-        painter.drawLine(QPointF(6, -self.RADIO + 5), QPointF(6, self.RADIO - 5))
+        
+        # 1. Líneas de conexión desde los extremos hacia el centro
+        painter.drawLine(QPointF(-self.MEDIO, 0), QPointF(-10, 0))
+        painter.drawLine(QPointF(10, 0), QPointF(self.MEDIO, 0))
+        
+        # 2. Placa positiva (Línea más larga, a la izquierda por ejemplo)
+        # x = -10, y desde -self.RADIO hasta +self.RADIO
+        painter.drawLine(QPointF(-10, -self.RADIO), QPointF(-10, self.RADIO))
+        
+        # 3. Placa negativa (Línea más corta y gruesa, a la derecha)
+        # Hacemos el lápiz un poco más grueso para la placa negativa o la dibujamos más compacta
+        pen_negativo = self._pen()
+        pen_negativo.setWidth(pen_negativo.width() + 2)
+        painter.setPen(pen_negativo)
+        painter.drawLine(QPointF(10, -self.RADIO / 2), QPointF(10, self.RADIO / 2))
+        
+        # Restaurar pen normal para los terminales y texto
+        painter.setPen(self._pen())
+        
+        # 4. Círculos de terminales en los extremos externos
         painter.setBrush(COLOR_TEXTO)
         r = 3.0
         painter.drawEllipse(self.terminal_local_a(), r, r)
         painter.drawEllipse(self.terminal_local_b(), r, r)
+        
+        # 5. Texto de identificación y valor
         painter.setBrush(Qt.BrushStyle.NoBrush)
-        painter.setPen(COLOR_TEXTO)
         painter.setFont(QFont("Arial", 8))
-        painter.drawText(QRectF(-self.MEDIO, -self.RADIO - 24, 2 * self.MEDIO, 14),
-                         Qt.AlignmentFlag.AlignCenter,
-                         f"{self.id_comp} ({self.valor:g}V)")
+        painter.drawText(
+            QRectF(-self.MEDIO, -self.RADIO - 24, 2 * self.MEDIO, 14),
+            Qt.AlignmentFlag.AlignCenter,
+            f"{self.id_comp} ({self.valor:g}V)"
+        )
 
 
 class CableItem(QGraphicsPathItem):
