@@ -37,6 +37,7 @@ eggs/
 mate_add/
 *.egg-info/
 *.egg
+alias
 
 # ==========================================
 # 5. Archivos de Entorno de Desarrollo y IDEs
