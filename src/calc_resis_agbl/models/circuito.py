@@ -1,3 +1,5 @@
+import math
+
 from calc_resis_agbl.models.componentes import (
     MAX_FUENTES,
     MAX_RESISTENCIAS,
@@ -22,8 +24,11 @@ class Circuito:
                 f"Se alcanzó el límite de {MAX_RESISTENCIAS} resistencias."
             )
         self._validar_nombre_unico(resistencia.id)
-        if resistencia.valor_ohms <= 0:
-            raise CircuitoError(f"{resistencia.id}: la resistencia debe ser mayor que 0 Ω.")
+        if not math.isfinite(resistencia.valor_ohms) or resistencia.valor_ohms <= 0:
+            raise CircuitoError(
+                f"{resistencia.id}: la resistencia debe ser un número finito "
+                "mayor que 0 Ω."
+            )
         self.resistencias.append(resistencia)
 
     def agregar_fuente(self, fuente: FuenteDC) -> None:
@@ -31,6 +36,10 @@ class Circuito:
         if len(self.fuentes) >= MAX_FUENTES:
             raise CircuitoError(f"Se alcanzó el límite de {MAX_FUENTES} fuentes DC.")
         self._validar_nombre_unico(fuente.id)
+        if not math.isfinite(fuente.valor_voltios):
+            raise CircuitoError(
+                f"{fuente.id}: el voltaje de la fuente debe ser un número finito."
+            )
         self.fuentes.append(fuente)
 
     def _validar_nombre_unico(self, id_comp: str) -> None:

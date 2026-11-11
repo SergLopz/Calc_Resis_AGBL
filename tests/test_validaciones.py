@@ -69,6 +69,26 @@ def test_resistencia_no_positiva_es_rechazada():
         circuito.agregar_resistencia(_resistencia(1, "1", "2", valor=0.0))
 
 
+def test_resistencia_negativa_es_rechazada():
+    circuito = Circuito()
+    with pytest.raises(CircuitoError, match="mayor que 0"):
+        circuito.agregar_resistencia(_resistencia(1, "1", "2", valor=-10.0))
+
+
+@pytest.mark.parametrize("valor", [float("nan"), float("inf"), float("-inf")])
+def test_resistencia_no_finita_es_rechazada(valor):
+    circuito = Circuito()
+    with pytest.raises(CircuitoError, match="finito"):
+        circuito.agregar_resistencia(_resistencia(1, "1", "2", valor=valor))
+
+
+@pytest.mark.parametrize("valor", [float("nan"), float("inf"), float("-inf")])
+def test_fuente_no_finita_es_rechazada(valor):
+    circuito = Circuito()
+    with pytest.raises(CircuitoError, match="finito"):
+        circuito.agregar_fuente(_fuente(1, "1", "2", valor=valor))
+
+
 def test_identificador_duplicado_es_rechazado():
     circuito = Circuito()
     circuito.agregar_resistencia(_resistencia(1, "1", "2"))
