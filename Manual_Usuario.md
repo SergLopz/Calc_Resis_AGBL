@@ -39,6 +39,11 @@ uv sync
 
 ## 3. Cómo ejecutar la aplicación
 
+Si descargaste el paquete desde **Releases**, descomprime el ZIP y ejecuta
+`CalcResisAGBL.exe`. No necesitas instalar Python ni `uv`.
+
+Si trabajas desde el código fuente:
+
 ```bash
 uv run src/calc_resis_agbl/main.py
 ```
@@ -48,6 +53,8 @@ O, tras `uv sync`, mediante el script instalado:
 ```bash
 uv run calc-resis-agbl
 ```
+
+> Para crear tu propio ejecutable, consulta la sección **12**.
 
 ---
 
@@ -252,6 +259,68 @@ extracción geométrica de ventanas (numeración, sentido horario, puentes,
 anidados y fallback), formato de las matrices, leyenda de mallas, detección de
 nodos y snapping, integración desde el lienzo, conexiones por cable, límites
 (20 R / 3 V) y validaciones de errores de conexión.
+
+---
+
+## 12. Crear el ejecutable de Windows (desarrollo)
+
+Esta sección es para quien quiera **compilar y distribuir** la aplicación. El
+usuario final solo necesita descargar el ZIP de **Releases**.
+
+### Requisitos
+
+- Windows 10/11 de 64 bits.
+- `uv` instalado.
+- Repositorio clonado y ubicado en una ruta local.
+
+### Paso a paso
+
+1. Abre **PowerShell** en la raíz del proyecto.
+2. Sincroniza las dependencias (incluye PyInstaller como herramienta de
+   desarrollo):
+   ```powershell
+   uv sync
+   ```
+3. Ejecuta el script de compilación:
+   ```powershell
+   powershell -ExecutionPolicy Bypass -File scripts\build_windows.ps1
+   ```
+4. Espera a que termine. El script:
+   - Genera la carpeta `dist\CalcResisAGBL\`.
+   - Copia `README.md`, `Manual_Usuario.md` y `LICENSE` dentro de esa carpeta.
+   - Crea el ZIP `dist\CalcResisAGBL-windows-x64.zip`.
+5. Prueba el ejecutable:
+   ```powershell
+   .\dist\CalcResisAGBL\CalcResisAGBL.exe
+   ```
+6. Para distribuir, comparte el **ZIP completo**. No envíes solo el `.exe`,
+   porque necesita la carpeta `_internal` que está a su lado.
+
+### Comando manual equivalente
+
+```powershell
+uv run pyinstaller --noconfirm --clean --windowed --onedir `
+  --name CalcResisAGBL `
+  --icon src/calc_resis_agbl/assets/icono_app.ico `
+  --add-data "src/calc_resis_agbl/assets;calc_resis_agbl/assets" `
+  --paths src `
+  --distpath dist --workpath build --specpath build `
+  src/calc_resis_agbl/main.py
+```
+
+### Notas
+
+- Se usa `--onedir` (no `--onefile`) porque arranca más rápido y es más estable.
+- El icono del ejecutable y de la ventana se genera con:
+  ```powershell
+  uv run python scripts/generar_iconos.py
+  ```
+- Windows puede advertir de **SmartScreen** por no estar firmado; es normal en
+  un proyecto académico.
+- `build/` y `dist/` están ignorados por Git. Los ejecutables se publican en
+  **Releases**, no se suben al repositorio.
+- Para macOS (Apple Silicon) y Linux se necesitan builds en esas plataformas;
+  se pueden automatizar más adelante con GitHub Actions.
 
 ---
 

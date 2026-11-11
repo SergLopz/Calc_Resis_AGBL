@@ -14,10 +14,12 @@ Aplicación de escritorio multiplataforma para el diseño, simulación interacti
 
 - [Descripción General](#-descripción-general)
 - [Características Principales](#-características-principales)
+- [Capturas](#-capturas)
 - [Arquitectura del Sistema](#-arquitectura-del-sistema)
 - [Pila Tecnológica](#-pila-tecnológica)
 - [Requisitos Previos](#-requisitos-previos)
 - [Instalación y Configuración](#-instalación-y-configuración)
+- [Compilar el ejecutable de Windows](#-compilar-el-ejecutable-de-windows)
 - [Licencia](#-licencia)
 
 ---
@@ -28,7 +30,7 @@ El análisis manual de circuitos eléctricos mediante las Leyes de Kirchhoff (LV
 
 1. **Un lienzo vectorial dinámico:** Permite construir esquemáticos de hasta **20 resistencias** y **3 fuentes de voltaje DC**.
 2. **Motor de teoría de grafos:** Clasifica de forma autómata los nodos simples ($d(v) = 2$, letras minúsculas) y esenciales ($d(v) \geq 3$, letras mayúsculas).
-3. **Análisis por ventanas geométricas:** Detecta las mallas como las caras interiores del *embedding* del dibujo, las orienta en sentido horario y las numera de abajo hacia arriba y de izquierda a derecha. El sistema $\mathbf{R} \cdot \mathbf{I} = \mathbf{V}$ se resuelve numéricamente. Incluye además un **análisis nodal (MNA)** como método alternativo(en desarrollo), con selector en la interfaz.
+3. **Análisis por ventanas geométricas:** Detecta las mallas como las caras interiores del *embedding* del dibujo, las orienta en sentido horario y las numera de abajo hacia arriba y de izquierda a derecha. El sistema $\mathbf{R} \cdot \mathbf{I} = \mathbf{V}$ se resuelve numéricamente. Incluye además un **análisis nodal (MNA)** como método alternativo, con selector en la interfaz.
 
 ---
 
@@ -46,18 +48,41 @@ El análisis manual de circuitos eléctricos mediante las Leyes de Kirchhoff (LV
 
 ---
 
+## 📸 Capturas
+
+<p align="center">
+  <img src="docs/images/UI.png" alt="Interfaz general de la calculadora" width="90%">
+</p>
+
+| Lienzo de dibujo | Matrices del análisis por mallas |
+| :---: | :---: |
+| <img src="docs/images/lienzo.png" alt="Lienzo con un circuito" width="330"> | <img src="docs/images/matrices_mallas.png" alt="Matrices R, I y V" width="560"> |
+
+| Leyenda de mallas | Resultados por componente |
+| :---: | :---: |
+| <img src="docs/images/leyenda_mallas.png" alt="Leyenda M1..M4" width="260"> | <img src="docs/images/resultados.png" alt="Tabla de resultados" width="380"> |
+
+---
+
 ## 📐 Arquitectura del Sistema
 
 El proyecto implementa el patrón **Model-View-Controller (MVC)** desacoplado mediante eventos y señales Qt:
 
 ```text
 Calc_Resis_AGBL/
+├── README.md                  # Presentación, capturas y guía de compilación
 ├── Manual_Usuario.md          # Guía de uso para el usuario final
-├── docs/                      # Documentación del proyecto y teoría de circuitos
-├── mate_add/                  # Material de apoyo y plan de desarrollo
+├── LICENSE
+├── docs/
+│   ├── images/                # Capturas usadas en la documentación
+│   └── CalculadoraResistiva.pdf
+├── scripts/
+│   ├── build_windows.ps1      # Genera el ejecutable de Windows
+│   └── generar_iconos.py      # Genera ICO/PNG/ICNS multirresolución
 ├── src/
 │   └── calc_resis_agbl/
-│       ├── main.py            # Punto de entrada (QApplication)
+│       ├── main.py            # Punto de entrada (QApplication + icono)
+│       ├── assets/            # Iconos de la aplicación
 │       ├── core/              # Lógica de negocio (grafos, solvers)
 │       │   ├── graph_builder.py
 │       │   ├── mesh_solver.py     # Análisis por mallas (R·I=V)
@@ -72,7 +97,8 @@ Calc_Resis_AGBL/
 │           ├── canvas.py
 │           ├── graphics_items.py
 │           ├── main_window.py
-│           └── matrix_panel.py
+│           ├── matrix_panel.py
+│           └── recursos.py        # Rutas de recursos en desarrollo y PyInstaller
 ├── tests/                     # Pruebas unitarias automatizadas (pytest)
 └── pyproject.toml             # Configuración unificada (UV, Ruff, Proyecto)
 ```
@@ -89,6 +115,10 @@ Calc_Resis_AGBL/
 * Álgebra Lineal: NumPy
 
 * Renderizado de matrices: Matplotlib (texto y corchetes dibujados manualmente)
+
+* Generación de iconos: Pillow
+
+* Empaquetado de escritorio: PyInstaller
 
 * Calidad de Código y Pruebas: Ruff & Pytest
 ---
@@ -128,6 +158,57 @@ uv run src/calc_resis_agbl/main.py
 
 > 📘 **Guía completa:** consulta el **[Manual de Usuario](Manual_Usuario.md)** para
 > el paso a paso, atajos, lectura de matrices y solución de problemas.
+
+---
+
+## 📦 Compilar el ejecutable de Windows
+
+Esta sección es para **desarrolladores**. Si solo quieres usar la aplicación,
+descarga el ZIP desde la sección **Releases** del repositorio, descomprímelo y
+ejecuta `CalcResisAGBL.exe`; no necesitas instalar Python.
+
+**Requisitos:** Windows 10/11 de 64 bits, `uv` instalado y el repositorio clonado.
+
+1. Abre PowerShell en la raíz del proyecto y sincroniza las dependencias:
+   ```powershell
+   uv sync
+   ```
+2. Ejecuta el script de compilación:
+   ```powershell
+   powershell -ExecutionPolicy Bypass -File scripts\build_windows.ps1
+   ```
+3. El script genera:
+   - `dist\CalcResisAGBL\CalcResisAGBL.exe` (aplicación).
+   - `dist\CalcResisAGBL-windows-x64.zip` (paquete listo para distribuir).
+
+El build usa PyInstaller en modo `--onedir`: crea una carpeta con el ejecutable
+y todas sus dependencias. **Para distribuir comparte el ZIP completo**, no muevas
+solo el `.exe`, porque necesita la carpeta `_internal`.
+
+**Comando manual equivalente**, si prefieres ejecutar PyInstaller directamente:
+
+```powershell
+uv run pyinstaller --noconfirm --clean --windowed --onedir `
+  --name CalcResisAGBL `
+  --icon src/calc_resis_agbl/assets/icono_app.ico `
+  --add-data "src/calc_resis_agbl/assets;calc_resis_agbl/assets" `
+  --paths src `
+  --distpath dist --workpath build --specpath build `
+  src/calc_resis_agbl/main.py
+```
+
+**Notas útiles:**
+
+- El icono se genera con `uv run python scripts/generar_iconos.py`; produce un
+  `.ico` multirresolución, un `.png` y un `.icns` para macOS.
+- Windows puede mostrar una advertencia de **SmartScreen** porque el ejecutable
+  no está firmado digitalmente. Es normal en proyectos académicos; se puede
+  continuar con “Más información → Ejecutar de todas formas”.
+- Las carpetas `build/` y `dist/` están ignoradas por Git; no subas los
+  ejecutables al repositorio, publícalos en **Releases**.
+- Si PyInstaller advierte sobre módulos opcionales, revisa
+  `build\CalcResisAGBL\warn-CalcResisAGBL.txt`. La mayoría de esos avisos son
+  normales y no impiden el funcionamiento.
 
 ---
 ## 📄 Licencia
