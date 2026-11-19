@@ -22,6 +22,9 @@ tabla, junto con el sistema de ecuaciones matricial que se resolvió.
 continuo). No soporta AC, capacitores ni inductores.
 
 **Límites del proyecto:** máximo **20 resistencias** y **3 fuentes DC** por circuito.
+La aplicación muestra un contador `Resistencias: n/20 · Fuentes: n/3` junto al
+selector y, al intentar superar un tope, avisa con una ventana emergente y no
+agrega el componente.
 
 ---
 
@@ -81,6 +84,10 @@ La ventana se divide en cuatro zonas:
 - Presiona **"Agregar al lienzo"**, o usa los atajos:
   - **`R`** → agrega una resistencia.
   - **`V`** → agrega una fuente DC.
+- Debajo del botón verás el contador **`Resistencias: n/20 · Fuentes: n/3`**.
+  Cuando un tipo llega a su tope, el contador se resalta en ámbar y la aplicación
+  ya no permite agregar más de ese tipo: muestra un aviso y conserva el circuito
+  sin cambios. Para liberar cupo, selecciona un componente y presiona **`Supr`**.
 
 ### Paso 2 — Ubicar y conectar
 - **Arrastra** los componentes sobre la grilla.
@@ -228,8 +235,9 @@ leyenda indica que el método nodal no utiliza mallas.
 | "El circuito necesita al menos dos nodos distintos."           | El circuito está incompleto o todos los terminales caen en una sola celda.        |
 | "El grafo tiene nodos desconectados..."                        | Hay ramas aisladas. Únelas con **Modo cable** o el imán de terminales.            |
 | "No se detectaron mallas independientes..."                    | No hay ningún lazo cerrado. Cierra el circuito.                                   |
-| "Se alcanzó el límite de 20 resistencias."                     | Superaste el máximo del proyecto. Elimina elementos (selecciona + `Supr`).        |
-| "Se alcanzó el límite de 3 fuentes DC."                        | Superaste el máximo de fuentes. Elimina alguna fuente.                            |
+| "Ya alcanzaste el máximo de 20 resistencias..."                | Llegaste al tope. El componente no se agrega. Borra una resistencia (`Supr`) y vuelve a intentarlo. |
+| "Ya alcanzaste el máximo de 3 fuentes DC..."                   | Llegaste al tope de fuentes. Elimina una fuente y vuelve a intentarlo.            |
+| El contador aparece en ámbar                                   | Alcanzaste el tope de resistencias o de fuentes. Borra un componente para liberar cupo. |
 | La tabla queda vacía tras resolver                             | Corrige la causa indicada en el mensaje de error y vuelve a presionar "Resolver". |
 
 ---
@@ -258,7 +266,8 @@ Las pruebas cubren: núcleo matemático (mallas ≡ nodal, incluido el paralelo)
 extracción geométrica de ventanas (numeración, sentido horario, puentes,
 anidados y fallback), formato de las matrices, leyenda de mallas, detección de
 nodos y snapping, integración desde el lienzo, conexiones por cable, límites
-(20 R / 3 V) y validaciones de errores de conexión.
+(20 R / 3 V, bloqueo al agregar y contador visible) y validaciones de errores de
+conexión.
 
 ---
 

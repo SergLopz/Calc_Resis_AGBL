@@ -28,7 +28,7 @@ Aplicación de escritorio multiplataforma para el diseño, simulación interacti
 
 El análisis manual de circuitos eléctricos mediante las Leyes de Kirchhoff (LVK y LCK) es propenso a errores en la identificación de recorridos cerrados independientes y la formulación matricial. Esta herramienta aborda dicho problema integrando:
 
-1. **Un lienzo vectorial dinámico:** Permite construir esquemáticos de hasta **20 resistencias** y **3 fuentes de voltaje DC**.
+1. **Un lienzo vectorial dinámico:** Permite construir esquemáticos de hasta **20 resistencias** y **3 fuentes de voltaje DC**, con un contador visible y bloqueo del componente al alcanzar el tope.
 2. **Motor de teoría de grafos:** Clasifica de forma autómata los nodos simples ($d(v) = 2$, letras minúsculas) y esenciales ($d(v) \geq 3$, letras mayúsculas).
 3. **Análisis por ventanas geométricas:** Detecta las mallas como las caras interiores del *embedding* del dibujo, las orienta en sentido horario y las numera de abajo hacia arriba y de izquierda a derecha. El sistema $\mathbf{R} \cdot \mathbf{I} = \mathbf{V}$ se resuelve numéricamente. Incluye además un **análisis nodal (MNA)** como método alternativo, con selector en la interfaz.
 
@@ -37,6 +37,7 @@ El análisis manual de circuitos eléctricos mediante las Leyes de Kirchhoff (LV
 ## ✨ Características Principales
 
 * **Lienzo Gráfico Interactivo:** Arrastre de componentes con **snapping a grilla** y **conexión por imán** entre terminales; atajos de teclado (`R` resistencia, `V` fuente, `T` rotar, `Supr` borrar).
+* **Control de límites:** Un contador `Resistencias: n/20 · Fuentes: n/3` muestra el uso actual; al intentar superar el tope, la aplicación avisa con una ventana emergente y no agrega el componente.
 * **Detección automática de nodos:** Los terminales que comparten celda de grilla forman un mismo nodo; se clasifican en simples ($d(v)=2$, minúsculas) y esenciales ($d(v)\geq 3$, mayúsculas).
 * **Tierra por clic derecho:** Marca cualquier nodo como referencia ($0\,\text{V}$) directamente en el lienzo.
 * **Detección geométrica de mallas:** Reconoce las ventanas que el usuario ve en el lienzo, las numera `M1..Mn` (de abajo hacia arriba y de izquierda a derecha) y las orienta en sentido horario. Los puentes no se asignan a ninguna malla y las ventanas anidadas se separan correctamente.
