@@ -19,7 +19,11 @@ from PyQt6.QtWidgets import (
 from calc_resis_agbl.core.mesh_solver import MeshSolver
 from calc_resis_agbl.core.nodal_solver import NodalSolver
 from calc_resis_agbl.models.circuito import Circuito
-from calc_resis_agbl.models.componentes import CircuitoError
+from calc_resis_agbl.models.componentes import (
+    MAX_FUENTES,
+    MAX_RESISTENCIAS,
+    CircuitoError,
+)
 from calc_resis_agbl.ui.canvas import CircuitCanvas
 from calc_resis_agbl.ui.matrix_panel import MatrixPanel
 
@@ -58,6 +62,7 @@ class MainWindow(QMainWindow):
 
         self.setCentralWidget(cuerpo)
         self.statusBar().showMessage(self._texto_ayuda())
+        self._actualizar_contador()
 
     # ------------------------------------------------------------------
     # Construcción de paneles
@@ -83,6 +88,10 @@ class MainWindow(QMainWindow):
         form.addRow("Tipo:", self.tipo_combo)
         form.addRow("Valor:", self.valor_spin)
         form.addRow(boton_add)
+
+        self.etiqueta_limites = QLabel()
+        self.etiqueta_limites.setStyleSheet("color:#CCCCCC;")
+        form.addRow(self.etiqueta_limites)
         self.tipo_combo.currentIndexChanged.connect(self._actualizar_unidad)
 
         grupo_metodo = QGroupBox("Método de análisis")
@@ -183,6 +192,22 @@ class MainWindow(QMainWindow):
         )
         self.leyenda_mallas.setHtml(
             "Circuito modificado. Resuelve para actualizar las mallas."
+        )
+        self._actualizar_contador()
+
+    def _actualizar_contador(self) -> None:
+        """Muestra el uso de componentes y resalta el tope alcanzado."""
+        cantidades = self.canvas.cantidades()
+        self.etiqueta_limites.setText(
+            f"Resistencias: {cantidades['R']}/{MAX_RESISTENCIAS} · "
+            f"Fuentes: {cantidades['V']}/{MAX_FUENTES}"
+        )
+        al_tope = (
+            cantidades["R"] >= MAX_RESISTENCIAS
+            or cantidades["V"] >= MAX_FUENTES
+        )
+        self.etiqueta_limites.setStyleSheet(
+            "color:#FFB74D;font-weight:bold;" if al_tope else "color:#CCCCCC;"
         )
 
     def _mostrar_limite_alcanzado(self, mensaje: str) -> None:

@@ -279,3 +279,40 @@ def test_resolver_no_propaga_errores_del_modelo(qapp, monkeypatch):
     ventana._resolver()
 
     assert capturado and "límite" in capturado[0]
+
+
+# ----------------------------------------------------------------------
+# Contador de componentes
+# ----------------------------------------------------------------------
+def test_contador_refleja_los_componentes(qapp):
+    ventana = MainWindow()
+    ventana.canvas.agregar_resistencia()
+    ventana.canvas.agregar_resistencia()
+    ventana.canvas.agregar_fuente()
+
+    texto = ventana.etiqueta_limites.text()
+    assert f"2/{MAX_RESISTENCIAS}" in texto
+    assert f"1/{MAX_FUENTES}" in texto
+
+
+def test_contador_resalta_el_tope_y_se_libera_al_borrar(qapp):
+    ventana = MainWindow()
+    items = [ventana.canvas.agregar_resistencia() for _ in range(MAX_RESISTENCIAS)]
+
+    assert "FFB74D" in ventana.etiqueta_limites.styleSheet()
+
+    items[0].setSelected(True)
+    ventana.canvas._eliminar_seleccion()
+
+    assert "FFB74D" not in ventana.etiqueta_limites.styleSheet()
+
+
+def test_contador_vuelve_a_cero_al_limpiar(qapp):
+    ventana = MainWindow()
+    ventana.canvas.agregar_resistencia()
+    ventana.canvas.agregar_fuente()
+    ventana.canvas.limpiar()
+
+    texto = ventana.etiqueta_limites.text()
+    assert f"0/{MAX_RESISTENCIAS}" in texto
+    assert f"0/{MAX_FUENTES}" in texto

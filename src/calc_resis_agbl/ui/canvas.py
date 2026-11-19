@@ -96,11 +96,20 @@ class CircuitCanvas(QGraphicsView):
         self, tipo: type[BaseComponente], maximo: int, mensaje: str
     ) -> bool:
         """True si aún cabe otro componente del tipo; si no, emite el aviso."""
-        cantidad = sum(1 for it in self.componentes() if isinstance(it, tipo))
-        if cantidad < maximo:
+        if self._contar(tipo) < maximo:
             return True
         self.limite_alcanzado.emit(mensaje)
         return False
+
+    def _contar(self, tipo: type[BaseComponente]) -> int:
+        return sum(1 for it in self.componentes() if isinstance(it, tipo))
+
+    def cantidades(self) -> dict[str, int]:
+        """Cantidad actual de resistencias y fuentes dibujadas en el lienzo."""
+        return {
+            "R": self._contar(ResistenciaItem),
+            "V": self._contar(FuenteItem),
+        }
 
     def componentes(self) -> list[BaseComponente]:
         return [it for it in self.scene.items() if isinstance(it, BaseComponente)]
