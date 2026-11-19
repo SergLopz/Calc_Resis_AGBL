@@ -3,7 +3,11 @@ from PyQt6.QtGui import QColor, QPainter, QPen
 from PyQt6.QtWidgets import QGraphicsScene, QGraphicsView
 
 from calc_resis_agbl.core.netlist import DetectorNodos, Punto, snap_a_grilla
-from calc_resis_agbl.models.componentes import NODO_REFERENCIA
+from calc_resis_agbl.models.componentes import (
+    MAX_FUENTES,
+    MAX_RESISTENCIAS,
+    NODO_REFERENCIA,
+)
 from calc_resis_agbl.ui.graphics_items import (
     BaseComponente,
     CableItem,
@@ -29,6 +33,7 @@ class CircuitCanvas(QGraphicsView):
 
     circuito_cambiado = pyqtSignal()
     componente_seleccionado = pyqtSignal(object)
+    limite_alcanzado = pyqtSignal(str)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -57,17 +62,45 @@ class CircuitCanvas(QGraphicsView):
     # ------------------------------------------------------------------
     # API pública
     # ------------------------------------------------------------------
-    def agregar_resistencia(self, valor: float = 1000.0, pos: QPointF | None = None) -> ResistenciaItem:
+    def agregar_resistencia(
+        self, valor: float = 1000.0, pos: QPointF | None = None
+    ) -> ResistenciaItem | None:
+        if not self._hay_cupo(
+            ResistenciaItem,
+            MAX_RESISTENCIAS,
+            f"Ya alcanzaste el máximo de {MAX_RESISTENCIAS} resistencias. "
+            "Selecciona una y presiona Supr para poder agregar otra.",
+        ):
+            return None
         self._contador["R"] += 1
         item = ResistenciaItem(f"R{self._contador['R']}", valor)
         self._colocar(item, pos)
         return item
 
-    def agregar_fuente(self, valor: float = 12.0, pos: QPointF | None = None) -> FuenteItem:
+    def agregar_fuente(
+        self, valor: float = 12.0, pos: QPointF | None = None
+    ) -> FuenteItem | None:
+        if not self._hay_cupo(
+            FuenteItem,
+            MAX_FUENTES,
+            f"Ya alcanzaste el máximo de {MAX_FUENTES} fuentes DC. "
+            "Selecciona una y presiona Supr para poder agregar otra.",
+        ):
+            return None
         self._contador["V"] += 1
         item = FuenteItem(f"V{self._contador['V']}", valor)
         self._colocar(item, pos)
         return item
+
+    def _hay_cupo(
+        self, tipo: type[BaseComponente], maximo: int, mensaje: str
+    ) -> bool:
+        """True si aún cabe otro componente del tipo; si no, emite el aviso."""
+        cantidad = sum(1 for it in self.componentes() if isinstance(it, tipo))
+        if cantidad < maximo:
+            return True
+        self.limite_alcanzado.emit(mensaje)
+        return False
 
     def componentes(self) -> list[BaseComponente]:
         return [it for it in self.scene.items() if isinstance(it, BaseComponente)]

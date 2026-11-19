@@ -35,6 +35,7 @@ class MainWindow(QMainWindow):
         self.canvas = CircuitCanvas(self)
         self.canvas.circuito_cambiado.connect(self._on_circuito_cambiado)
         self.canvas.componente_seleccionado.connect(self._on_componente_seleccionado)
+        self.canvas.limite_alcanzado.connect(self._mostrar_limite_alcanzado)
 
         ensamblado = QSplitter(Qt.Orientation.Horizontal)
         ensamblado.addWidget(self._panel_controles())
@@ -184,6 +185,9 @@ class MainWindow(QMainWindow):
             "Circuito modificado. Resuelve para actualizar las mallas."
         )
 
+    def _mostrar_limite_alcanzado(self, mensaje: str) -> None:
+        QMessageBox.information(self, "Límite de componentes", mensaje)
+
     def _construir_circuito(self) -> Circuito:
         componentes = self.canvas.construir_componentes_modelo()
         circuito = Circuito()
@@ -195,8 +199,8 @@ class MainWindow(QMainWindow):
         return circuito
 
     def _resolver(self):
-        circuito = self._construir_circuito()
         try:
+            circuito = self._construir_circuito()
             circuito.validar()
             if self.canvas.id_nodo_tierra() is None:
                 raise CircuitoError(

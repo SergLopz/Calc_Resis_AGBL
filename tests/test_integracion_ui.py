@@ -3,7 +3,15 @@ from PyQt6.QtCore import QPointF
 
 from calc_resis_agbl.core.mesh_solver import MeshSolver
 from calc_resis_agbl.core.nodal_solver import NodalSolver
-from calc_resis_agbl.models.componentes import FuenteDC, Resistencia, Terminal
+from calc_resis_agbl.models.componentes import (
+    MAX_FUENTES,
+    MAX_RESISTENCIAS,
+    CircuitoError,
+    FuenteDC,
+    Resistencia,
+    Terminal,
+)
+from calc_resis_agbl.ui import main_window as main_window_module
 from calc_resis_agbl.ui.canvas import CircuitCanvas
 from calc_resis_agbl.ui.main_window import MainWindow
 
@@ -194,3 +202,80 @@ def test_matriz_nodal_usa_nombres_a_x_b(qapp):
     assert "x" in textos
     assert "b" in textos
     assert any(texto.startswith("Ec. ") for texto in textos)
+
+
+# ----------------------------------------------------------------------
+# Límites de componentes
+# ----------------------------------------------------------------------
+def test_bloquea_la_resistencia_numero_21(qapp):
+    canvas = CircuitCanvas()
+    avisos: list[str] = []
+    canvas.limite_alcanzado.connect(avisos.append)
+
+    for _ in range(MAX_RESISTENCIAS):
+        assert canvas.agregar_resistencia() is not None
+
+    assert canvas.agregar_resistencia() is None
+    assert len(canvas.componentes()) == MAX_RESISTENCIAS
+    assert avisos and str(MAX_RESISTENCIAS) in avisos[0]
+
+
+def test_bloquea_la_cuarta_fuente(qapp):
+    canvas = CircuitCanvas()
+    avisos: list[str] = []
+    canvas.limite_alcanzado.connect(avisos.append)
+
+    for _ in range(MAX_FUENTES):
+        assert canvas.agregar_fuente() is not None
+
+    assert canvas.agregar_fuente() is None
+    assert len(canvas.componentes()) == MAX_FUENTES
+    assert avisos and str(MAX_FUENTES) in avisos[0]
+
+
+def test_permite_agregar_despues_de_borrar(qapp):
+    canvas = CircuitCanvas()
+    items = [canvas.agregar_resistencia() for _ in range(MAX_RESISTENCIAS)]
+    canvas.scene.removeItem(items[0])
+
+    assert canvas.agregar_resistencia() is not None
+    assert len(canvas.componentes()) == MAX_RESISTENCIAS
+
+
+def test_la_ventana_muestra_el_aviso_de_limite(qapp, monkeypatch):
+    ventana = MainWindow()
+    capturado: list[tuple] = []
+
+    class _MensajesFalsos:
+        @staticmethod
+        def information(parent, titulo, mensaje):
+            capturado.append((titulo, mensaje))
+
+    monkeypatch.setattr(main_window_module, "QMessageBox", _MensajesFalsos)
+    ventana._mostrar_limite_alcanzado("mensaje de prueba")
+
+    assert capturado == [("Límite de componentes", "mensaje de prueba")]
+
+
+def test_resolver_no_propaga_errores_del_modelo(qapp, monkeypatch):
+    ventana = MainWindow()
+    capturado: list[str] = []
+
+    class _MensajesFalsos:
+        @staticmethod
+        def warning(parent, titulo, mensaje):
+            capturado.append(mensaje)
+
+        @staticmethod
+        def critical(parent, titulo, mensaje):
+            capturado.append(mensaje)
+
+    def _rechazar(_self):
+        raise CircuitoError("Se alcanzó el límite de 20 resistencias.")
+
+    monkeypatch.setattr(main_window_module, "QMessageBox", _MensajesFalsos)
+    monkeypatch.setattr(MainWindow, "_construir_circuito", _rechazar)
+
+    ventana._resolver()
+
+    assert capturado and "límite" in capturado[0]
