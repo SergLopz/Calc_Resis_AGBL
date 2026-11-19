@@ -83,7 +83,7 @@ La ventana se divide en cuatro zonas:
   izquierdo (el valor de una resistencia está en **Ω** y el de una fuente en **V**).
 - Presiona **"Agregar al lienzo"**, o usa los atajos:
   - **`R`** → agrega una resistencia.
-  - **`V`** → agrega una fuente DC.
+  - **`E`** → agrega una fuente DC.
 - Debajo del botón verás el contador **`Resistencias: n/20 · Fuentes: n/3`**.
   Cuando un tipo llega a su tope, el contador se resalta en ámbar y la aplicación
   ya no permite agregar más de ese tipo: muestra un aviso y conserva el circuito
@@ -102,14 +102,14 @@ Cuando los componentes están **separados** (como en un esquemático normal) y
 sus terminales **no coinciden** en la misma celda, usa el botón **"Modo cable"**
 para tender cables que los unan:
 
-1. Presiona el botón **"Modo cable"** (queda activo; el cursor cambia a cruz).
-   El modo es **persistente** hasta que lo desactives.
+1. Presiona el botón **"Modo cable"** o la tecla **`W`** (queda activo; el cursor
+   cambia a cruz). El modo es **persistente** hasta que lo desactives.
 2. Haz **clic** sobre el terminal de un componente. Se resalta con un círculo.
 3. Haz **clic** sobre el terminal de otro componente. Aparece un **cable**
    (línea recta) que los une y ambos terminales pasan a ser **el mismo nodo**.
 4. Repite para el resto de las uniones. Clic en una zona vacía **cancela** la
    selección pendiente.
-5. Desactiva el botón **"Modo cable"** cuando termines.
+5. Desactiva el modo con el botón **"Modo cable"** o con **`W`** cuando termines.
 6. El botón **"Borrar cables"** elimina todas las conexiones por cable de una vez.
 
 > También puedes **combinar** ambos mecanismos: el imán (superponer terminales)
@@ -141,10 +141,13 @@ para tender cables que los unan:
 | Tecla                  | Acción                                            |
 | ---------------------- | ------------------------------------------------- |
 | `R`                    | Agregar una resistencia                           |
-| `V`                    | Agregar una fuente DC                             |
+| `E`                    | Agregar una fuente DC                             |
 | `T`                    | Rotar 90° el componente seleccionado              |
+| `W`                    | Activar/desactivar el modo cable                  |
 | `Supr` / `Retroceso`   | Borrar el componente seleccionado                 |
 | **Clic derecho**       | Marcar el nodo/terminal bajo el cursor como tierra |
+
+> `R`, `E` y `W` responden cuando el lienzo tiene el foco.
 
 > El botón **"Modo cable"** (persistente) habilita la conexión por
 > **dos clics** en terminales; **"Borrar cables"** limpia esas conexiones.

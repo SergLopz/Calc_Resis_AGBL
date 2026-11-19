@@ -40,6 +40,7 @@ class MainWindow(QMainWindow):
         self.canvas.circuito_cambiado.connect(self._on_circuito_cambiado)
         self.canvas.componente_seleccionado.connect(self._on_componente_seleccionado)
         self.canvas.limite_alcanzado.connect(self._mostrar_limite_alcanzado)
+        self.canvas.modo_conexion_cambiado.connect(self._sincronizar_boton_cable)
 
         ensamblado = QSplitter(Qt.Orientation.Horizontal)
         ensamblado.addWidget(self._panel_controles())
@@ -167,8 +168,9 @@ class MainWindow(QMainWindow):
     # ------------------------------------------------------------------
     def _texto_ayuda(self) -> str:
         return (
-            "R/V: agregar · T: rotar · Supr: borrar · clic derecho: marcar tierra "
-            "(0 V) · 'Modo cable': clic en un terminal y luego en otro para unirlos."
+            "R/E: agregar · T: rotar · Supr: borrar · W: modo cable · "
+            "clic derecho: marcar tierra (0 V) · 'Modo cable': clic en un "
+            "terminal y luego en otro para unirlos."
         )
 
     def _actualizar_unidad(self):
@@ -212,6 +214,12 @@ class MainWindow(QMainWindow):
 
     def _mostrar_limite_alcanzado(self, mensaje: str) -> None:
         QMessageBox.information(self, "Límite de componentes", mensaje)
+
+    def _sincronizar_boton_cable(self, activo: bool) -> None:
+        """Mantiene el botón 'Modo cable' alineado con el atajo W."""
+        self.boton_modo_cable.blockSignals(True)
+        self.boton_modo_cable.setChecked(activo)
+        self.boton_modo_cable.blockSignals(False)
 
     def _construir_circuito(self) -> Circuito:
         componentes = self.canvas.construir_componentes_modelo()

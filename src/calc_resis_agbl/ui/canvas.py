@@ -34,6 +34,7 @@ class CircuitCanvas(QGraphicsView):
     circuito_cambiado = pyqtSignal()
     componente_seleccionado = pyqtSignal(object)
     limite_alcanzado = pyqtSignal(str)
+    modo_conexion_cambiado = pyqtSignal(bool)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -251,6 +252,7 @@ class CircuitCanvas(QGraphicsView):
         self.viewport().setCursor(
             Qt.CursorShape.CrossCursor if activo else Qt.CursorShape.ArrowCursor
         )
+        self.modo_conexion_cambiado.emit(activo)
 
     def _colocar(self, item: BaseComponente, pos: QPointF | None) -> None:
         if pos is None:
@@ -266,10 +268,12 @@ class CircuitCanvas(QGraphicsView):
     def keyPressEvent(self, event):
         if event.key() == Qt.Key.Key_R:
             self.agregar_resistencia(pos=self._pos_centro())
-        elif event.key() == Qt.Key.Key_V:
+        elif event.key() == Qt.Key.Key_E:
             self.agregar_fuente(pos=self._pos_centro())
         elif event.key() == Qt.Key.Key_T:
             self._rotar_seleccion()
+        elif event.key() == Qt.Key.Key_W:
+            self.activar_modo_conexion(not self._modo_conexion)
         elif event.key() in (Qt.Key.Key_Delete, Qt.Key.Key_Backspace):
             self._eliminar_seleccion()
         else:

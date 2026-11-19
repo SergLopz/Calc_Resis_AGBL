@@ -1,5 +1,6 @@
 import pytest
-from PyQt6.QtCore import QPointF
+from PyQt6.QtCore import QPointF, Qt
+from PyQt6.QtTest import QTest
 
 from calc_resis_agbl.core.mesh_solver import MeshSolver
 from calc_resis_agbl.core.nodal_solver import NodalSolver
@@ -316,3 +317,43 @@ def test_contador_vuelve_a_cero_al_limpiar(qapp):
     texto = ventana.etiqueta_limites.text()
     assert f"0/{MAX_RESISTENCIAS}" in texto
     assert f"0/{MAX_FUENTES}" in texto
+
+
+# ----------------------------------------------------------------------
+# Atajo W para el modo cable
+# ----------------------------------------------------------------------
+def test_w_activa_y_desactiva_el_modo_cable(qapp):
+    canvas = CircuitCanvas()
+    estados: list[bool] = []
+    canvas.modo_conexion_cambiado.connect(estados.append)
+
+    QTest.keyClick(canvas, Qt.Key.Key_W)
+    assert canvas._modo_conexion is True
+
+    QTest.keyClick(canvas, Qt.Key.Key_W)
+    assert canvas._modo_conexion is False
+
+    assert estados == [True, False]
+
+
+def test_el_boton_refleja_el_cambio_por_teclado(qapp):
+    ventana = MainWindow()
+
+    QTest.keyClick(ventana.canvas, Qt.Key.Key_W)
+    assert ventana.boton_modo_cable.isChecked()
+
+    QTest.keyClick(ventana.canvas, Qt.Key.Key_W)
+    assert not ventana.boton_modo_cable.isChecked()
+
+
+# ----------------------------------------------------------------------
+# Atajo E para agregar fuentes
+# ----------------------------------------------------------------------
+def test_e_agrega_fuente_y_v_ya_no_hace_nada(qapp):
+    canvas = CircuitCanvas()
+
+    QTest.keyClick(canvas, Qt.Key.Key_E)
+    assert canvas.cantidades()["V"] == 1
+
+    QTest.keyClick(canvas, Qt.Key.Key_V)
+    assert canvas.cantidades()["V"] == 1

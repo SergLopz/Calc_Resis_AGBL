@@ -36,7 +36,7 @@ El análisis manual de circuitos eléctricos mediante las Leyes de Kirchhoff (LV
 
 ## ✨ Características Principales
 
-* **Lienzo Gráfico Interactivo:** Arrastre de componentes con **snapping a grilla** y **conexión por imán** entre terminales; atajos de teclado (`R` resistencia, `V` fuente, `T` rotar, `Supr` borrar).
+* **Lienzo Gráfico Interactivo:** Arrastre de componentes con **snapping a grilla** y **conexión por imán** entre terminales; atajos de teclado (`R` resistencia, `E` fuente, `T` rotar, `W` modo cable, `Supr` borrar).
 * **Control de límites:** Un contador `Resistencias: n/20 · Fuentes: n/3` muestra el uso actual; al intentar superar el tope, la aplicación avisa con una ventana emergente y no agrega el componente.
 * **Detección automática de nodos:** Los terminales que comparten celda de grilla forman un mismo nodo; se clasifican en simples ($d(v)=2$, minúsculas) y esenciales ($d(v)\geq 3$, mayúsculas).
 * **Tierra por clic derecho:** Marca cualquier nodo como referencia ($0\,\text{V}$) directamente en el lienzo.
@@ -147,7 +147,7 @@ uv run src/calc_resis_agbl/main.py
 ---
 ## 🧭 Uso rápido
 
-- **R** agrega una resistencia y **V** una fuente DC en el centro del lienzo.
+- **R** agrega una resistencia y **E** una fuente DC en el centro del lienzo.
 - Arrastra los componentes sobre una grilla; al soltarlos cerca de otro terminal
   se **conectan con imán** (terminales que comparten celda = mismo nodo).
 - **T** rota el componente seleccionado 90° (para ramas verticales).

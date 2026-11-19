@@ -186,7 +186,7 @@
 >
 > De ese vector salen todos los resultados. La corriente de una rama compartida es la diferencia de las corrientes de las dos mallas; la caída de tensión es `R · I`; y la potencia es `V · I`. Con eso se llena la tabla por componente.
 >
-> ¿Cómo sabemos que está bien? Verificamos las leyes de Kirchhoff en los circuitos de prueba, comprobamos que la suma de caídas de cada malla coincida con sus fuentes y comparamos con soluciones calculadas a mano. Hoy son 68 pruebas automatizadas.
+> ¿Cómo sabemos que está bien? Verificamos las leyes de Kirchhoff en los circuitos de prueba, comprobamos que la suma de caídas de cada malla coincida con sus fuentes y comparamos con soluciones calculadas a mano. Hoy son 79 pruebas automatizadas.
 
 ### Apoyo visual
 
@@ -215,11 +215,11 @@
 >
 > [Abrir la app con el circuito de ejemplo.]
 >
-> Aquí está el lienzo. Con `R` agrego resistencias y con `V` una fuente. Con `T` roto un componente y con clic derecho marco la tierra. Al presionar **Resolver circuito**, la aplicación detecta los nodos, encuentra las ventanas y construye el sistema.
+> Aquí está el lienzo. Con `R` agrego resistencias y con `E` una fuente. Con `T` roto un componente y con clic derecho marco la tierra. Al presionar **Resolver circuito**, la aplicación detecta los nodos, encuentra las ventanas y construye el sistema.
 >
 > En el panel inferior vemos las tres matrices: `R`, `I` y `V`. Las filas y columnas están rotuladas `M1`, `M2`, etc. Abajo aparece la solución. A la derecha, la leyenda “Mallas detectadas” indica qué componentes pertenecen a cada malla; si hay resistencias en paralelo, se anota su equivalente, por ejemplo `R2 || R3 = 250 Ω`. En la tabla vemos corriente, voltaje y potencia por componente.
 >
-> La arquitectura está separada en capas: la interfaz en PyQt6, los modelos de componentes, el núcleo de grafos y solvers, y el panel de matrices. Eso permitió probar la lógica sin depender de la interfaz. Hoy tenemos **68 pruebas automatizadas**, `ruff` limpio, auditoría de dependencias sin vulnerabilidades conocidas y un ejecutable de Windows probado, de aproximadamente 14 MB, con un ZIP de distribución de 74 MB.
+> La arquitectura está separada en capas: la interfaz en PyQt6, los modelos de componentes, el núcleo de grafos y solvers, y el panel de matrices. Eso permitió probar la lógica sin depender de la interfaz. Hoy tenemos **79 pruebas automatizadas**, `ruff` limpio, auditoría de dependencias sin vulnerabilidades conocidas y un ejecutable de Windows probado, de aproximadamente 14 MB, con un ZIP de distribución de 74 MB.
 >
 > Para cerrar: este proyecto no solo resuelve circuitos. Muestra que **el álgebra lineal es el puente** entre un problema físico y una solución computacional. El circuito se convierte en vector y matriz; la geometría elige una base; el método numérico resuelve; y la interfaz hace visible lo que normalmente queda en el papel.
 >
